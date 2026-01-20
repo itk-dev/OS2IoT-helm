@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: chripstack
+  name: chirpstack
   namespace: argo-cd
 spec:
   destinations:
   - name: in-cluster
-    namespace: chripstack
+    namespace: chirpstack
     server: https://kubernetes.default.svc
   clusterResourceWhitelist:
   - group: ''

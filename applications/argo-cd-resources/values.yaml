@@ -43,7 +43,7 @@ apps:
       - ServerSideApply=true
 
   ## Applications
-  - name: chripstack
-    project: chripstack
-    namespace: chripstack
+  - name: chirpstack
+    project: chirpstack
+    namespace: chirpstack
     automated: true
