@@ -30,7 +30,7 @@ chirpstack:
     url: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@cloudnative-pg-cluster-rw:5432/chirpstack?sslmode=disable"
 
   redis:
-    # server: "redis://redis:6379"
+    url: "redis://chirpstack-redis:6379/0"
 
   network:
     net_id: "000000"

@@ -41,3 +41,9 @@ apps:
     automated: true
     syncOptions:
       - ServerSideApply=true
+
+  ## Applications
+  - name: chripstack
+    project: chripstack
+    namespace: chripstack
+    automated: true

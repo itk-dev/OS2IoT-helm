@@ -8,7 +8,7 @@ data:
     dsn={{ .Values.database.url | default "postgres://chirpstack:chirpstack@chirpstack-postgres/chirpstack?sslmode=disable" | quote }}
 
     [redis]
-    servers=[{{ ((.Values.redis).server) | default "redis://redis:6379" | quote }}]
+    servers=[{{ .Values.redis.url | default "redis://redis:6379" | quote }}]
 
     [network]
     net_id={{ ((.Values.network).net_id) | default "000000" | quote }}
