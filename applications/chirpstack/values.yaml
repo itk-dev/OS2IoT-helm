@@ -1,0 +1,45 @@
+chirpstack:
+  # Default values for aodb.
+  # This is a YAML-formatted file.
+  # Declare variables to be passed into your templates.
+
+  image:
+    registry: chirpstack
+    repository: chirpstack
+    tag: '4.6'
+    pullPolicy: IfNotPresent
+
+  replicaCount: 3
+
+  # How much revision history should be stored? (can clog up etcd)
+  REVISION_HISTORY_LIMIT: 3
+
+  extraEnv:
+    - name: POSTGRES_USER
+      valueFrom:
+        secretKeyRef:
+          name: cloudnative-pg-cluster-openwebui
+          key: username
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: cloudnative-pg-cluster-openwebui
+          key: password
+
+  database:
+    url: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@cloudnative-pg-cluster-rw:5432/chirpstack?sslmode=disable"
+
+  redis:
+    # server: "redis://redis:6379"
+
+  network:
+    net_id: "000000"
+    # adr_plugins: '[]'
+    # enabled_regions: '["eu868"]'
+
+  api:
+    bind: "0.0.0.0:8080"
+    # jwt_secret: "change-me-in-production"
+
+  mqtt:
+    # server: "tcp://mosquitto:1883"
