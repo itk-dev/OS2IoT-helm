@@ -15,12 +15,12 @@ chirpstack:
     - name: POSTGRES_USER
       valueFrom:
         secretKeyRef:
-          name: cloudnative-pg-cluster-openwebui
+          name: cloudnative-pg-cluster-chirpstack
           key: username
     - name: POSTGRES_PASSWORD
       valueFrom:
         secretKeyRef:
-          name: cloudnative-pg-cluster-openwebui
+          name: cloudnative-pg-cluster-chirpstack
           key: password
 
   database:
