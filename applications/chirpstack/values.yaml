@@ -9,10 +9,7 @@ chirpstack:
     tag: '4.6'
     pullPolicy: IfNotPresent
 
-  replicaCount: 3
-
-  # How much revision history should be stored? (can clog up etcd)
-  REVISION_HISTORY_LIMIT: 3
+  replicaCount: 1
 
   extraEnv:
     - name: POSTGRES_USER
