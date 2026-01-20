@@ -11,3 +11,33 @@ apps:
     project: argo-cd
     namespace: argo-cd
     automated: true
+
+  - name: traefik
+    project: traefik
+    namespace: traefik
+    automated: true
+
+  - name: cert-manager
+    project: cert-manager
+    namespace: cert-manager
+    automated: true
+
+  - name: sealed-secrets
+    project: sealed-secrets
+    namespace: kube-system
+    automated: true
+
+  ## Storage
+  - name: cloudnative-pg-operator
+    project: cloudnative-pg-operator
+    namespace: cloudnative-pg-operator
+    automated: true
+    syncOptions:
+      - ServerSideApply=true
+
+  - name: redis-operator
+    project: redis-operator
+    namespace: redis-operator
+    automated: true
+    syncOptions:
+      - ServerSideApply=true
