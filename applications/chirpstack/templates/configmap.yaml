@@ -5,25 +5,25 @@ metadata:
 data:
   chirpstack.toml: |
     [postgresql]
-    dsn={{ .Values.database.url | default "postgres://chirpstack:chirpstack@chirpstack-postgres/chirpstack?sslmode=disable" | quote }}
+    dsn={{ .Values.chirpstack.database.url | default "postgres://chirpstack:chirpstack@chirpstack-postgres/chirpstack?sslmode=disable" | quote }}
 
     [redis]
-    servers=[{{ .Values.redis.url | default "redis://redis:6379" | quote }}]
+    servers=[{{ .Values.chirpstack.redis.url | default "redis://redis:6379" | quote }}]
 
     [network]
-    net_id={{ ((.Values.network).net_id) | default "000000" | quote }}
-    adr_plugins={{ ((.Values.network).adr_plugins) | default "[\"/etc/chirpstack/adr-modules/sensade-adr-mod/sensade-adr.js\"]" }}
-    enabled_regions={{ ((.Values.network).enabled_regions) | default "[\"eu868\"]" }}
+    net_id={{ ((.Values.chirpstack.network).net_id) | default "000000" | quote }}
+    adr_plugins={{ ((.Values.chirpstack.network).adr_plugins) | default "[\"/etc/chirpstack/adr-modules/sensade-adr-mod/sensade-adr.js\"]" }}
+    enabled_regions={{ ((.Values.chirpstack.network).enabled_regions) | default "[\"eu868\"]" }}
 
     [api]
-    bind={{ ((.Values.api).bind) | default "0.0.0.0:8080" | quote }}
-    jwt_secret={{ ((.Values.api).jwt_secret) | default "change-me-in-production" | quote }}
+    bind={{ ((.Values.chirpstack.api).bind) | default "0.0.0.0:8080" | quote }}
+    jwt_secret={{ ((.Values.chirpstack.api).jwt_secret) | default "change-me-in-production" | quote }}
 
     [integration]
     enabled=["mqtt"]
 
     [integration.mqtt]
-    server={{ ((.Values.mqtt).server) | default "tcp://mosquitto:1883" | quote }}
+    server={{ ((.Values.chirpstack.mqtt).server) | default "tcp://mosquitto:1883" | quote }}
     json=true
 
   region_eu868.toml: |
