@@ -47,3 +47,6 @@ apps:
     project: chirpstack
     namespace: chirpstack
     automated: true
+    valueFiles:
+      - values.yaml
+      - cloudnative-pg-values.yaml
