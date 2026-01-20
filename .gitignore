@@ -1,0 +1,13 @@
+# Proctect locally un-sealed secrets
+**/secret.yaml
+**/*secret*.yaml
+**/local-secrets
+!**/*sealed*.yaml
+
+# Don't commit download helm charts
+applications/argo-cd/charts
+**/Chart.lock
+
+# Protected download sealed secret public certificates.
+*.pem
+**/*.pem

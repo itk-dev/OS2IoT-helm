@@ -1,0 +1,13 @@
+repoUrl: https://github.com/itk-dev/OS2Iot-helm.git
+
+apps:
+  # Basic setup
+  - name: argo-cd-resources
+    project: argo-cd
+    namespace: argo-cd
+    automated: true
+
+  - name: argo-cd
+    project: argo-cd
+    namespace: argo-cd
+    automated: true
