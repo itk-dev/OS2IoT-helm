@@ -22,9 +22,9 @@ chirpstack:
         secretKeyRef:
           name: cloudnative-pg-cluster-chirpstack
           key: password
-
-  database:
-    url: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@cloudnative-pg-cluster-rw:5432/chirpstack?sslmode=disable"
+    # ChirpStack supports environment variable overrides using the pattern COMPONENT__KEY.
+    - name: POSTGRESQL__DSN
+      value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@cloudnative-pg-cluster-rw:5432/chirpstack?sslmode=disable"
 
   MQTT:
    server: "tcp://mosquitto:1883"

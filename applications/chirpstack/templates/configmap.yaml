@@ -5,7 +5,7 @@ metadata:
 data:
   chirpstack.toml: |
     [postgresql]
-    dsn={{ .Values.chirpstack.database.url | default "postgres://chirpstack:chirpstack@chirpstack-postgres/chirpstack?sslmode=disable" | quote }}
+    dsn="postgres://chirpstack:chirpstack@chirpstack-postgres/chirpstack?sslmode=disable"
 
     [redis]
     servers=[{{ .Values.chirpstack.redis.url | default "redis://redis:6379" | quote }}]
