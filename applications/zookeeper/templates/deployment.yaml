@@ -37,4 +37,8 @@ spec:
           env:
             - name: ALLOW_ANONYMOUS_LOGIN
               value: "{{ $.Values.zookeeper.allow_anonymous_login }}"
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: "{{ $.Values.zookeeper.clientPort }}"
+            - name: ZOOKEEPER_TICK_TIME
+              value: "{{ $.Values.zookeeper.tickTime }}"
       restartPolicy: Always
