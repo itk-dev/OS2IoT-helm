@@ -26,17 +26,17 @@ chirpstack:
   database:
     url: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@cloudnative-pg-cluster-rw:5432/chirpstack?sslmode=disable"
 
+  MQTT:
+   server: "tcp://mosquitto:1883"
+
   redis:
     url: "redis://chirpstack-redis:6379/0"
 
   network:
     net_id: "000000"
-    # adr_plugins: '[]'
-    # enabled_regions: '["eu868"]'
+    adr_plugins: '[]'
+    enabled_regions: '["eu868"]'
 
   api:
     bind: "0.0.0.0:8080"
-    # jwt_secret: "change-me-in-production"
-
-  mqtt:
-    # server: "tcp://mosquitto:1883"
+    jwt_secret: "change-me-in-production"

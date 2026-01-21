@@ -11,19 +11,19 @@ data:
     servers=[{{ .Values.chirpstack.redis.url | default "redis://redis:6379" | quote }}]
 
     [network]
-    net_id={{ ((.Values.chirpstack.network).net_id) | default "000000" | quote }}
-    adr_plugins={{ ((.Values.chirpstack.network).adr_plugins) | default "[\"/etc/chirpstack/adr-modules/sensade-adr-mod/sensade-adr.js\"]" }}
-    enabled_regions={{ ((.Values.chirpstack.network).enabled_regions) | default "[\"eu868\"]" }}
+    net_id={{ .Values.chirpstack.network.net_id | default "000000" | quote }}
+    adr_plugins={{ .Values.chirpstack.network.adr_plugins | default "[\"/etc/chirpstack/adr-modules/sensade-adr-mod/sensade-adr.js\"]" }}
+    enabled_regions={{ .Values.chirpstack.network.enabled_regions | default "[\"eu868\"]" }}
 
     [api]
-    bind={{ ((.Values.chirpstack.api).bind) | default "0.0.0.0:8080" | quote }}
-    jwt_secret={{ ((.Values.chirpstack.api).jwt_secret) | default "change-me-in-production" | quote }}
+    bind={{ .Values.chirpstack.api.bind | default "0.0.0.0:8080" | quote }}
+    jwt_secret={{ .Values.chirpstack.api.jwt_secret | default "change-me-in-production" | quote }}
 
     [integration]
     enabled=["mqtt"]
 
     [integration.mqtt]
-    server={{ ((.Values.chirpstack.mqtt).server) | default "tcp://mosquitto:1883" | quote }}
+    server={{ .Values.chirpstack.MQTT.server | default "tcp://mosquitto:1883" | quote }}
     json=true
 
   region_eu868.toml: |
@@ -62,7 +62,7 @@ data:
           topic_prefix=""
 
           # MQTT server (e.g. scheme://host:port where scheme is tcp, ssl or ws)
-          server="tcp://mosquitto:1883"
+          server={{ .Values.chirpstack.MQTT.server | default "tcp://mosquitto:1883" | quote }}
 
       # Gateway channel configuration.
       #
