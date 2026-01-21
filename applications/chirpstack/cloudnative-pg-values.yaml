@@ -351,7 +351,10 @@ cloudnative-pg:
     # -- BootstrapInitDB is the configuration of the bootstrap process when initdb is used.
     # See: https://cloudnative-pg.io/documentation/current/bootstrap/
     # See: https://cloudnative-pg.io/documentation/current/cloudnative-pg.v1/#postgresql-cnpg-io-v1-bootstrapinitdb
-    initdb: {}
+    initdb:
+      postInitTemplateSQL:
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm;
+        - CREATE EXTENSION IF NOT EXISTS hstore;
       # database: app
       # owner: "" # Defaults to the database name
       # secret:

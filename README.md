@@ -112,3 +112,21 @@ This will install all the applications from `applications/argo-cd-resources/valu
 
 All other applications will need to have their configuration updated and committed to the repository
 before they can be installed.
+
+
+-------------------
+
+```yaml
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  creationTimestamp: null
+  name: cloudnative-pg-cluster-chirpstack
+  namespace: chirpstack
+stringData:
+  username: chirpstack
+  password: <PASSWORD>
+```
+
+kubeseal --format yaml  < applications/chirpstack/local-secrets/cloudnative-pg-cluster-secret.yaml   > applications/chirpstack/templates/cloudnative-pg-cluster-sealed-secret.yaml
