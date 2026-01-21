@@ -8,4 +8,4 @@ chirpstackGateway:
   replicaCount: 1
 
   mqtt:
-    server: "tcp://mosquitto-svc:1883"
+    server: "tcp://mosquitto-svc.mosquitto:1883"
