@@ -1,0 +1,10 @@
+zookeeper:
+  image:
+    registry: bitnami
+    repository: zookeeper
+    tag: 'latest'
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  allow_anonymous_login: "yes"

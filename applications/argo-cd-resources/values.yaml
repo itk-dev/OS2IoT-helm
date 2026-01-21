@@ -60,3 +60,8 @@ apps:
     project: chirpstack-gateway
     namespace: chirpstack-gateway
     automated: true
+
+  - name: zookeeper
+    project: zookeeper
+    namespace: zookeeper
+    automated: true
