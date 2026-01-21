@@ -1,0 +1,11 @@
+chirpstackGateway:
+  image:
+    registry: chirpstack
+    repository: chirpstack-gateway-bridge
+    tag: '4.0.10'
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  mqtt:
+    server: "tcp://mosquitto-svc:1883"

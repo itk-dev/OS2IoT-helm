@@ -55,3 +55,8 @@ apps:
     valueFiles:
       - values.yaml
       - cloudnative-pg-values.yaml
+
+  - name: chirpstack-gateway
+    project: chirpstack-gateway
+    namespace: chirpstack-gateway
+    automated: true
