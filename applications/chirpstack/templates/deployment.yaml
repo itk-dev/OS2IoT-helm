@@ -27,14 +27,18 @@ spec:
           image: "{{ .Values.chirpstack.image.registry }}/{{ .Values.chirpstack.image.repository }}:{{ .Values.chirpstack.image.tag | default "latest" }}"
           imagePullPolicy: {{ .Values.chirpstack.image.pullPolicy }}
           env:
-          {{- range .Values.chirpstack.extraEnv }}
-            - name: {{ .name }}
-              {{- if .value }}
-              value: {{ .value | quote }}
-              {{- else if .valueFrom }}
+            - name: POSTGRES_USER
               valueFrom:
-                {{- toYaml .valueFrom | nindent 14 }}
-              {{- end }}
+                secretKeyRef:
+                  name: cloudnative-pg-cluster-chirpstack
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cloudnative-pg-cluster-chirpstack
+                  key: password
+          {{- with .Values.chirpstack.extraEnv }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           ports:
             - name: grpc

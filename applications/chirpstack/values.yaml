@@ -11,17 +11,7 @@ chirpstack:
 
   replicaCount: 1
 
-  extraEnv:
-    - name: POSTGRES_USER
-      valueFrom:
-        secretKeyRef:
-          name: cloudnative-pg-cluster-chirpstack
-          key: username
-    - name: POSTGRES_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: cloudnative-pg-cluster-chirpstack
-          key: password
+  extraEnv: []
 
   MQTT:
    server: "tcp://mosquitto:1883"
