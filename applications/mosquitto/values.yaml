@@ -1,0 +1,8 @@
+mosquitto:
+  image:
+    repository: eclipse-mosquitto
+    tag: '2'
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
