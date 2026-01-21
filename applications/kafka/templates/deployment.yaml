@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: {{ $.Chart.Name }}
-          image: "{{ .Values.kafka.image.repository }}/{{ .Values.kafka.image.registry }}:{{ .Values.kafka.image.tag }}"
+          image: "{{ .Values.kafka.image.registry }}/{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag }}"
           imagePullPolicy: {{ .Values.kafka.image.pullPolicy }}
           ports:
             - name: plaintext
