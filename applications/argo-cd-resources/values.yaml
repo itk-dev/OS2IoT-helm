@@ -43,6 +43,11 @@ apps:
       - ServerSideApply=true
 
   ## Applications
+  - name: mosquitto
+    project: mosquitto
+    namespace: mosquitto
+    automated: true
+
   - name: chirpstack
     project: chirpstack
     namespace: chirpstack
