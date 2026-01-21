@@ -1,8 +1,8 @@
 zookeeper:
   image:
-    registry: bitnami
-    repository: zookeeper
-    tag: 'latest'
+    registry: confluentinc
+    repository: cp-zookeeper
+    tag: '7.6.0'
     pullPolicy: IfNotPresent
 
   replicaCount: 1
