@@ -15,5 +15,5 @@ spec:
           requests:
             storage: 1Gi
   redisConfig:
-    maxmemory: "128mb"
-    maxmemory-policy: "allkeys-lru"
+    maxmemory-policy: allkeys-lru
+    maxmemory: 128mb
