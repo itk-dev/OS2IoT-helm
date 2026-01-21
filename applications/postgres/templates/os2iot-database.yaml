@@ -2,6 +2,8 @@ apiVersion: postgresql.cnpg.io/v1
 kind: Database
 metadata:
   name: os2iot
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   name: os2iot
   owner: os2iot

@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-grant-permissions
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: grant-permissions
+          image: postgres:16
+          env:
+            - name: PGHOST
+              value: postgres-cluster-rw
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: os2iot
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-cluster-superuser
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-cluster-superuser
+                  key: password
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Granting permissions to chirpstack user on os2iot database..."
+              psql -v ON_ERROR_STOP=1 <<-EOSQL
+                GRANT ALL PRIVILEGES ON DATABASE os2iot TO chirpstack;
+                GRANT ALL PRIVILEGES ON SCHEMA public TO chirpstack;
+                GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO chirpstack;
+                GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO chirpstack;
+                ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO chirpstack;
+                ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO chirpstack;
+              EOSQL
+              echo "Permissions granted successfully."

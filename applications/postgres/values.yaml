@@ -75,13 +75,6 @@ cloudnative-pg:
       postInitTemplateSQL:
         - CREATE EXTENSION IF NOT EXISTS pg_trgm;
         - CREATE EXTENSION IF NOT EXISTS hstore;
-      postInitApplicationSQL:
-        # Grant chirpstack user access to the os2iot database
-        - GRANT ALL PRIVILEGES ON DATABASE os2iot TO chirpstack;
-        - GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO chirpstack;
-        - GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO chirpstack;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO chirpstack;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO chirpstack;
 
     # -- Affinity/Anti-affinity rules
     affinity:
