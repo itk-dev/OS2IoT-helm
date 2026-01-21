@@ -22,9 +22,6 @@ chirpstack:
         secretKeyRef:
           name: cloudnative-pg-cluster-chirpstack
           key: password
-    # ChirpStack v4 uses CHIRPSTACK__ prefix for env var overrides
-    - name: CHIRPSTACK__POSTGRESQL__DSN
-      value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@cloudnative-pg-cluster-rw:5432/chirpstack?sslmode=disable"
 
   MQTT:
    server: "tcp://mosquitto:1883"
