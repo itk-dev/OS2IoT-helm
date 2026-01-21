@@ -50,4 +50,6 @@ spec:
               value: "{{ $.Values.kafka.configuration.zookeeper_connect }}"
             - name: ALLOW_PLAINTEXT_LISTENER
               value: "{{ $.Values.kafka.configuration.allow_plaintext_listener }}"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "{{ $.Values.kafka.configuration.inter_broker_listener_name }}"
       restartPolicy: Always
