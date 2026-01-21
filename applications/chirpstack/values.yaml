@@ -14,7 +14,7 @@ chirpstack:
   extraEnv: []
 
   MQTT:
-   server: "tcp://mosquitto:1883"
+   server: "tcp://mosquitto-svc.mosquitto:1883"
 
   redis:
     url: "redis://chirpstack-redis:6379/0"
