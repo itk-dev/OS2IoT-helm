@@ -23,6 +23,7 @@ spec:
         - name: {{ $.Chart.Name }}
           image: "{{ .Values.os2iotBackend.image.registry }}/{{ .Values.os2iotBackend.image.repository }}:{{ .Values.os2iotBackend.image.tag }}"
           imagePullPolicy: {{ .Values.os2iotBackend.image.pullPolicy }}
+          terminationMessagePolicy: FallbackToLogsOnError
           ports:
             - name: http
               containerPort: 3000
@@ -34,12 +35,19 @@ spec:
             requests:
               cpu: {{ .Values.os2iotBackend.resources.requests.cpu }}
               memory: {{ .Values.os2iotBackend.resources.requests.memory }}
+          startupProbe:
+            httpGet:
+              path: /api/v1/healthcheck
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /api/v1/healthcheck
               port: 3000
-            initialDelaySeconds: 30
-            periodSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 3
           env:
             - name: DATABASE_HOSTNAME
               value: {{ .Values.os2iotBackend.database.hostname }}
@@ -106,10 +114,14 @@ spec:
                   key: password
             - name: CHIRPSTACK_API_KEY
               value: {{ .Values.os2iotBackend.chirpstack.apiKey | quote }}
+            - name: NPM_CONFIG_LOGLEVEL
+              value: "verbose"
           volumeMounts:
             - name: secret-ca-crt
               mountPath: /tmp/os2iot/backend/resources
               readOnly: true
+            - name: npm-logs
+              mountPath: /home/node/.npm/_logs
       volumes:
         - name: "{{ $.Chart.Name }}-configmap"
           configMap:
@@ -117,3 +129,5 @@ spec:
         - name: secret-ca-crt
           secret:
             secretName: ca-keys
+        - name: npm-logs
+          emptyDir: {}

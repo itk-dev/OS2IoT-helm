@@ -375,6 +375,53 @@ os2iotBackend:
     from: "noreply@example.com"
 ```
 
+### Debugging Startup Failures
+
+The backend runs database migrations on startup. If the container fails to start, use these commands to diagnose the issue.
+
+#### View container logs
+
+```bash
+# View logs from current container
+kubectl logs -n os2iot-backend -l app=os2iot-backend
+
+# View logs from previous crashed container
+kubectl logs -n os2iot-backend -l app=os2iot-backend --previous
+```
+
+#### View termination message
+
+The container is configured with `terminationMessagePolicy: FallbackToLogsOnError`, which captures the last log output on failure:
+
+```bash
+kubectl describe pod -n os2iot-backend -l app=os2iot-backend
+```
+
+Look for the `Last State` section to see the termination reason and message.
+
+#### Access npm debug logs
+
+npm writes detailed logs to `/home/node/.npm/_logs/`. These are persisted in an emptyDir volume and can be accessed if the container is in CrashLoopBackOff:
+
+```bash
+# List available log files
+kubectl exec -n os2iot-backend <pod-name> -- ls -la /home/node/.npm/_logs/
+
+# View a specific log file
+kubectl exec -n os2iot-backend <pod-name> -- cat /home/node/.npm/_logs/<log-file>.log
+
+# Copy all npm logs locally
+kubectl cp os2iot-backend/<pod-name>:/home/node/.npm/_logs ./npm-logs
+```
+
+#### Common issues
+
+| Symptom | Likely Cause | Solution |
+|---------|--------------|----------|
+| SIGTERM during migrations | Startup probe timeout | Increase `failureThreshold` in deployment |
+| Database connection refused | PostgreSQL not ready | Check postgres-cluster pods and secrets |
+| Missing secret key | Sealed secret not deployed | Verify sealed secrets exist in namespace |
+
 ---
 
 ## Mosquitto Broker
