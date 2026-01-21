@@ -17,7 +17,7 @@ data:
     auth_opt_pg_host {{ .Values.mosquittoBroker.database.host }}
     auth_opt_pg_port {{ .Values.mosquittoBroker.database.port }}
     auth_opt_pg_user {{ .Values.mosquittoBroker.database.username }}
-    auth_opt_pg_password {{ .Values.mosquittoBroker.database.password }}
+    auth_opt_pg_password_file /etc/mosquitto/secrets/password
     auth_opt_pg_dbname {{ .Values.mosquittoBroker.database.name }}
     auth_opt_pg_userquery SELECT mqttpasswordhash FROM iot_device WHERE mqttUsername = $1 limit 1
     auth_opt_pg_superquery SELECT COUNT(*) FROM iot_device WHERE (mqttusername = $1 AND permissions = 'superUser')
@@ -43,7 +43,7 @@ data:
     auth_opt_pg_host {{ .Values.mosquittoBroker.database.host }}
     auth_opt_pg_port {{ .Values.mosquittoBroker.database.port }}
     auth_opt_pg_user {{ .Values.mosquittoBroker.database.username }}
-    auth_opt_pg_password {{ .Values.mosquittoBroker.database.password }}
+    auth_opt_pg_password_file /etc/mosquitto/secrets/password
     auth_opt_pg_dbname {{ .Values.mosquittoBroker.database.name }}
     auth_opt_pg_userquery SELECT mqttpasswordhash FROM iot_device WHERE mqttUsername = $1 limit 1
     auth_opt_pg_superquery SELECT COUNT(*) FROM iot_device WHERE (mqttusername = $1 AND permissions = 'superUser')

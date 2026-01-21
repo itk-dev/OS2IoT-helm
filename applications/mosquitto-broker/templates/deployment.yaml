@@ -46,6 +46,9 @@ spec:
             - name: secret-server-key
               mountPath: /etc/mosquitto/certs
               readOnly: true
+            - name: secret-db-password
+              mountPath: /etc/mosquitto/secrets
+              readOnly: true
       volumes:
         - name: "{{ $.Chart.Name }}-configmap"
           configMap:
@@ -56,4 +59,10 @@ spec:
         - name: secret-server-key
           secret:
             secretName: server-keys
+        - name: secret-db-password
+          secret:
+            secretName: {{ .Values.mosquittoBroker.database.passwordSecretName }}
+            items:
+              - key: {{ .Values.mosquittoBroker.database.passwordSecretKey }}
+                path: password
       restartPolicy: Always

@@ -35,13 +35,20 @@ spec:
             - /bin/bash
             - -c
             - |
-              echo "Granting permissions to chirpstack user on os2iot database..."
+              echo "Granting permissions on os2iot database..."
               psql -v ON_ERROR_STOP=1 <<-EOSQL
+                -- Grant chirpstack full access
                 GRANT ALL PRIVILEGES ON DATABASE os2iot TO chirpstack;
                 GRANT ALL PRIVILEGES ON SCHEMA public TO chirpstack;
                 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO chirpstack;
                 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO chirpstack;
                 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO chirpstack;
                 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO chirpstack;
+
+                -- Grant mqtt read-only access for authentication queries
+                GRANT CONNECT ON DATABASE os2iot TO mqtt;
+                GRANT USAGE ON SCHEMA public TO mqtt;
+                GRANT SELECT ON ALL TABLES IN SCHEMA public TO mqtt;
+                ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO mqtt;
               EOSQL
               echo "Permissions granted successfully."

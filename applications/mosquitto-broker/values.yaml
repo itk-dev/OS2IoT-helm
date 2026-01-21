@@ -16,10 +16,12 @@ mosquittoBroker:
       memory: 128Mi
 
   database:
-    host: ""
+    host: "postgres-cluster-rw.postgres"
     port: "5432"
-    username: ""
-    password: ""
-    name: ""
+    username: "mqtt"
+    name: "os2iot"
     sslMode: "disable"
+    # Password injected from secret
+    passwordSecretName: "postgres-cluster-mqtt"
+    passwordSecretKey: "password"
 

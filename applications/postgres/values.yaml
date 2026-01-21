@@ -59,6 +59,13 @@ cloudnative-pg:
         inherit: true
         passwordSecret:
           name: postgres-cluster-os2iot
+      - name: mqtt
+        login: true
+        connectionLimit: -1
+        ensure: present
+        inherit: true
+        passwordSecret:
+          name: postgres-cluster-mqtt
 
     monitoring:
       enabled: false
