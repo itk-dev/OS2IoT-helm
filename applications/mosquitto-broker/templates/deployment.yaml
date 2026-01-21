@@ -18,6 +18,26 @@ spec:
         app: {{ $.Chart.Name }}
         version: "{{ $.Chart.Name }}-{{ .Values.mosquittoBroker.image.tag }}"
     spec:
+      initContainers:
+        - name: config-substitution
+          image: bhgedigital/envsubst:latest
+          env:
+            - name: MQTT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mosquittoBroker.database.passwordSecretName }}
+                  key: {{ .Values.mosquittoBroker.database.passwordSecretKey }}
+          command:
+            - sh
+            - -c
+            - |
+              envsubst < /etc/mosquitto/conf.d-template/go-auth.conf > /etc/mosquitto/conf.d/go-auth.conf
+          volumeMounts:
+            - name: {{ $.Chart.Name }}-configmap
+              mountPath: /etc/mosquitto/conf.d-template
+              readOnly: true
+            - name: config-processed
+              mountPath: /etc/mosquitto/conf.d
       containers:
         - name: {{ $.Chart.Name }}
           image: "{{ .Values.mosquittoBroker.image.registry }}/{{ .Values.mosquittoBroker.image.repository }}:{{ .Values.mosquittoBroker.image.tag }}"
@@ -37,32 +57,25 @@ spec:
               cpu: {{ .Values.mosquittoBroker.resources.requests.cpu }}
               memory: {{ .Values.mosquittoBroker.resources.requests.memory }}
           volumeMounts:
-            - name: {{ $.Chart.Name }}-configmap
-              mountPath: /etc/mosquitto/conf.d/go-auth.conf
-              subPath: go-auth.conf
+            - name: config-processed
+              mountPath: /etc/mosquitto/conf.d
+              readOnly: true
             - name: secret-ca-crt
               mountPath: /etc/mosquitto/ca_certificates
               readOnly: true
             - name: secret-server-key
               mountPath: /etc/mosquitto/certs
               readOnly: true
-            - name: secret-db-password
-              mountPath: /etc/mosquitto/secrets
-              readOnly: true
       volumes:
         - name: "{{ $.Chart.Name }}-configmap"
           configMap:
             name: "{{ $.Chart.Name }}-configmap"
+        - name: config-processed
+          emptyDir: {}
         - name: secret-ca-crt
           secret:
             secretName: ca-keys
         - name: secret-server-key
           secret:
             secretName: server-keys
-        - name: secret-db-password
-          secret:
-            secretName: {{ .Values.mosquittoBroker.database.passwordSecretName }}
-            items:
-              - key: {{ .Values.mosquittoBroker.database.passwordSecretKey }}
-                path: password
       restartPolicy: Always

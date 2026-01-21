@@ -120,10 +120,11 @@ The platform uses a shared PostgreSQL cluster managed by CloudNativePG. The data
 
 ### Database Users
 
-| User | Purpose | Database |
-|------|---------|----------|
-| `chirpstack` | ChirpStack LoRaWAN server | os2iot |
-| `os2iot` | OS2IoT backend (owner) | os2iot |
+| User | Purpose | Database | Access |
+|------|---------|----------|--------|
+| `os2iot` | OS2IoT backend (owner) | os2iot | Full (owner) |
+| `chirpstack` | ChirpStack LoRaWAN server | os2iot | Full (granted) |
+| `mqtt` | Mosquitto broker authentication | os2iot | Read-only (SELECT) |
 
 ### Creating Database Secrets
 
@@ -185,6 +186,32 @@ stringData:
   password: <SAME_PASSWORD_AS_ABOVE>
 ```
 
+**mqtt-user-secret.yaml** (for postgres namespace):
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-cluster-mqtt
+  namespace: postgres
+type: Opaque
+stringData:
+  username: mqtt
+  password: <GENERATE_SECURE_PASSWORD>
+```
+
+**mqtt-user-secret-for-broker-ns.yaml** (for mosquitto-broker namespace):
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-cluster-mqtt
+  namespace: mosquitto-broker
+type: Opaque
+stringData:
+  username: mqtt
+  password: <SAME_PASSWORD_AS_ABOVE>
+```
+
 #### 2. Generate secure passwords
 
 ```bash
@@ -200,10 +227,12 @@ cd applications/postgres
 # Seal secrets for postgres namespace (CloudNativePG roles)
 kubeseal --format yaml < local-secrets/chirpstack-user-secret.yaml > templates/chirpstack-user-sealed-secret.yaml
 kubeseal --format yaml < local-secrets/os2iot-user-secret.yaml > templates/os2iot-user-sealed-secret.yaml
+kubeseal --format yaml < local-secrets/mqtt-user-secret.yaml > templates/mqtt-user-sealed-secret.yaml
 
 # Seal secrets for application namespaces (deployment access)
 kubeseal --format yaml < local-secrets/chirpstack-user-secret-for-chirpstack-ns.yaml > ../chirpstack/templates/postgres-cluster-chirpstack-sealed-secret.yaml
 kubeseal --format yaml < local-secrets/os2iot-user-secret-for-backend-ns.yaml > ../os2iot-backend/templates/postgres-cluster-os2iot-sealed-secret.yaml
+kubeseal --format yaml < local-secrets/mqtt-user-secret-for-broker-ns.yaml > ../mosquitto-broker/templates/postgres-cluster-mqtt-sealed-secret.yaml
 ```
 
 #### 4. Commit the sealed secrets
