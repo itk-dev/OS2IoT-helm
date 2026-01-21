@@ -1,0 +1,53 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ $.Chart.Name }}
+spec:
+  replicas: {{ .Values.kafka.replicaCount}}
+  selector:
+    matchLabels:
+      app: {{ $.Chart.Name }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: {{ $.Chart.Name }}
+        version: "{{ $.Chart.Name }}-{{ .Values.kafka.image.tag }}"
+    spec:
+      containers:
+        - name: {{ $.Chart.Name }}
+          image: "{{ .Values.kafka.image.repository }}/{{ .Values.kafka.image.registry }}:{{ .Values.kafka.image.tag }}"
+          imagePullPolicy: {{ .Values.kafka.image.pullPolicy }}
+          ports:
+            - name: plaintext
+              containerPort: 9092
+              protocol: TCP
+            - name: internal
+              containerPort: 9093
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 150m
+              memory: 512Mi
+            requests:
+              cpu: 5m
+              memory: 128Mi
+          # Custom bellow: 
+          env:
+            - name: KAFKA_BROKER_ID
+              value: "{{ $.Values.kafka.configuration.broker_id }}"
+            - name: KAFKA_LISTENERS
+              value: "{{ $.Values.kafka.configuration.listeners }}"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "{{ $.Values.kafka.configuration.advertised_listeners }}"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "{{ $.Values.kafka.configuration.listener_security_protocol_map }}"
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: "{{ $.Values.kafka.configuration.zookeeper_connect }}"
+            - name: ALLOW_PLAINTEXT_LISTENER
+              value: "{{ $.Values.kafka.configuration.allow_plaintext_listener }}"
+      restartPolicy: Always

@@ -1,0 +1,19 @@
+kafka:
+  image:
+    registry: confluentinc
+    repository: cp-kafka
+    tag: '7.6.0'
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+
+  revision_history_limit: 3
+
+  configuration:
+    broker_id: 1
+    listeners: PLAINTEXT://:9092,INTERNAL://:9093
+    advertised_listeners: PLAINTEXT://kafka-svc:9092,INTERNAL://127.0.0.1:9093
+    listener_security_protocol_map: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+    zookeeper_connect: zookeeper-svc.zookeeper:2181
+    allow_plaintext_listener: yes

@@ -65,3 +65,8 @@ apps:
     project: zookeeper
     namespace: zookeeper
     automated: true
+
+  - name: kafka
+    project: kafka
+    namespace: kafka
+    automated: true
