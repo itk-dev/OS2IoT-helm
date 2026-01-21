@@ -1,3 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chirpstack-redis-config
+  namespace: chirpstack
+data:
+  redis.conf: |
+    maxmemory 128mb
+    maxmemory-policy allkeys-lru
+---
 apiVersion: redis.redis.opstreelabs.in/v1beta2
 kind: Redis
 metadata:
@@ -15,5 +26,4 @@ spec:
           requests:
             storage: 1Gi
   redisConfig:
-    maxmemory-policy: allkeys-lru
-    maxmemory: 128mb
+    additionalRedisConfig: chirpstack-redis-config
