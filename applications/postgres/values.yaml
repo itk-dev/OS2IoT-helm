@@ -7,7 +7,7 @@ cloudnative-pg:
   # * `postgresql`
   # * `postgis`
   # * `timescaledb`
-  type: postgresql
+  type: postgis
 
   version:
     # -- PostgreSQL major version to use
