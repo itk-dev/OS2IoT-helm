@@ -1,0 +1,9 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: os2iot
+spec:
+  name: os2iot
+  owner: os2iot
+  cluster:
+    name: postgres-cluster

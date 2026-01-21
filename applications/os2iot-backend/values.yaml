@@ -16,13 +16,13 @@ os2iotBackend:
       memory: 128Mi
 
   database:
-    # CloudNative PG cluster service name (cluster-name-rw.namespace)
-    hostname: cloudnative-pg-cluster-rw.chirpstack
+    # Shared PostgreSQL cluster service name (cluster-name-rw.namespace)
+    hostname: postgres-cluster-rw.postgres
     port: "5432"
-    name: chirpstack
-    username: chirpstack
-    # Reference to chirpstack secret for password
-    passwordSecretName: cloudnative-pg-cluster-chirpstack
+    name: os2iot
+    username: os2iot
+    # Reference to shared postgres secret for password (must be sealed in os2iot-backend namespace)
+    passwordSecretName: postgres-cluster-os2iot
     passwordSecretKey: password
 
   kafka:

@@ -30,12 +30,12 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: cloudnative-pg-cluster-chirpstack
+                  name: postgres-cluster-chirpstack
                   key: username
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: cloudnative-pg-cluster-chirpstack
+                  name: postgres-cluster-chirpstack
                   key: password
           {{- with .Values.chirpstack.extraEnv }}
             {{- toYaml . | nindent 12 }}

@@ -1,18 +1,14 @@
 apiVersion: v2
 name: chirpstack
-description: A Helm chart for Kubernetes
+description: A Helm chart for ChirpStack LoRaWAN network server
 type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 0.1.2
+version: 0.2.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: 1.16.1
+appVersion: 4.6.0
 
-dependencies:
-    - name: cluster
-      alias: cloudnative-pg
-      version: 0.3.1
-      repository: https://cloudnative-pg.github.io/charts
+# Database is provided by the shared postgres application

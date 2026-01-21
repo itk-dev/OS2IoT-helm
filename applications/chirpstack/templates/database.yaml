@@ -1,9 +1,0 @@
-apiVersion: postgresql.cnpg.io/v1
-kind: Database
-metadata:
-  name: chirpstack
-spec:
-  name: chirpstack
-  owner: chirpstack
-  cluster:
-    name: cloudnative-pg-cluster

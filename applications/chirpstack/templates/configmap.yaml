@@ -5,7 +5,7 @@ metadata:
 data:
   chirpstack.toml: |
     [postgresql]
-    dsn="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@cloudnative-pg-cluster-rw:5432/chirpstack?sslmode=disable"
+    dsn="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres-cluster-rw.postgres:5432/os2iot?sslmode=disable"
 
     [redis]
     servers=[{{ .Values.chirpstack.redis.url | default "redis://redis:6379" | quote }}]

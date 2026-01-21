@@ -1,0 +1,13 @@
+apiVersion: v2
+name: postgres
+description: Shared PostgreSQL cluster for OS2IoT platform using CloudNativePG
+type: application
+
+version: 0.1.0
+appVersion: "16"
+
+dependencies:
+    - name: cluster
+      alias: cloudnative-pg
+      version: 0.3.1
+      repository: https://cloudnative-pg.github.io/charts

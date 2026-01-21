@@ -1,0 +1,102 @@
+cloudnative-pg:
+  # -- Override the full name of the chart
+  fullnameOverride: postgres-cluster
+
+  ###
+  # -- Type of the CNPG database. Available types:
+  # * `postgresql`
+  # * `postgis`
+  # * `timescaledb`
+  type: postgresql
+
+  version:
+    # -- PostgreSQL major version to use
+    postgresql: "16"
+
+  ###
+  # -- Cluster mode of operation. Available modes:
+  # * `standalone` - default mode. Creates new or updates an existing CNPG cluster.
+  # * `replica` - Creates a replica cluster from an existing CNPG cluster.
+  # * `recovery` - Same as standalone but creates a cluster from a backup, object store or via pg_basebackup.
+  mode: standalone
+
+  cluster:
+    # -- Number of instances
+    instances: 2
+
+    # -- Image pull policy
+    imagePullPolicy: IfNotPresent
+
+    storage:
+      size: 8Gi
+      storageClass: ""
+
+    walStorage:
+      enabled: false
+      size: 1Gi
+      storageClass: ""
+
+    # -- When this option is enabled, the operator will use the SuperuserSecret to update the postgres user password.
+    enableSuperuserAccess: true
+    superuserSecret: ""
+
+    # -- Allow to disable PDB
+    enablePDB: true
+
+    # -- Declarative role management
+    roles:
+      - name: chirpstack
+        login: true
+        connectionLimit: -1
+        ensure: present
+        inherit: true
+        passwordSecret:
+          name: postgres-cluster-chirpstack
+      - name: os2iot
+        login: true
+        connectionLimit: -1
+        ensure: present
+        inherit: true
+        passwordSecret:
+          name: postgres-cluster-os2iot
+
+    monitoring:
+      enabled: false
+      podMonitor:
+        enabled: true
+
+    postgresql:
+      parameters: {}
+      pg_hba: []
+      shared_preload_libraries: []
+
+    # -- Bootstrap configuration
+    initdb:
+      postInitTemplateSQL:
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm;
+        - CREATE EXTENSION IF NOT EXISTS hstore;
+      postInitApplicationSQL:
+        # Grant chirpstack user access to the os2iot database
+        - GRANT ALL PRIVILEGES ON DATABASE os2iot TO chirpstack;
+        - GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO chirpstack;
+        - GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO chirpstack;
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO chirpstack;
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO chirpstack;
+
+    # -- Affinity/Anti-affinity rules
+    affinity:
+      topologyKey: topology.kubernetes.io/zone
+
+    additionalLabels: {}
+    annotations: {}
+
+  backups:
+    enabled: false
+    provider: s3
+    retentionPolicy: "30d"
+
+  imageCatalog:
+    create: true
+    images: []
+
+  poolers: []

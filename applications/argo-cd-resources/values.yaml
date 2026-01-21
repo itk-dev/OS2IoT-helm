@@ -42,6 +42,12 @@ apps:
     syncOptions:
       - ServerSideApply=true
 
+  ## Databases
+  - name: postgres
+    project: postgres
+    namespace: postgres
+    automated: true
+
   ## Applications
   - name: mosquitto
     project: mosquitto
@@ -57,9 +63,6 @@ apps:
     project: chirpstack
     namespace: chirpstack
     automated: true
-    valueFiles:
-      - values.yaml
-      - cloudnative-pg-values.yaml
 
   - name: chirpstack-gateway
     project: chirpstack-gateway

@@ -114,24 +114,114 @@ All other applications will need to have their configuration updated and committ
 before they can be installed.
 
 
--------------------
+## PostgreSQL Database
 
+The platform uses a shared PostgreSQL cluster managed by CloudNativePG. The database is deployed in the `postgres` namespace and shared by ChirpStack and OS2IoT backend.
+
+### Database Users
+
+| User | Purpose | Database |
+|------|---------|----------|
+| `chirpstack` | ChirpStack LoRaWAN server | os2iot |
+| `os2iot` | OS2IoT backend (owner) | os2iot |
+
+### Creating Database Secrets
+
+Database credentials must be sealed for both the postgres namespace (for role creation) and the application namespaces (for deployment access).
+
+#### 1. Create local secret files
+
+Create the following files in `applications/postgres/local-secrets/`:
+
+**chirpstack-user-secret.yaml** (for postgres namespace):
 ```yaml
 apiVersion: v1
 kind: Secret
-type: Opaque
 metadata:
-  creationTimestamp: null
-  name: cloudnative-pg-cluster-chirpstack
-  namespace: chirpstack
+  name: postgres-cluster-chirpstack
+  namespace: postgres
+type: Opaque
 stringData:
   username: chirpstack
-  password: <PASSWORD>
+  password: <GENERATE_SECURE_PASSWORD>
 ```
 
-kubeseal --format yaml  < applications/chirpstack/local-secrets/cloudnative-pg-cluster-secret.yaml   > applications/chirpstack/templates/cloudnative-pg-cluster-sealed-secret.yaml
+**chirpstack-user-secret-for-chirpstack-ns.yaml** (for chirpstack namespace):
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-cluster-chirpstack
+  namespace: chirpstack
+type: Opaque
+stringData:
+  username: chirpstack
+  password: <SAME_PASSWORD_AS_ABOVE>
+```
 
--------------------
+**os2iot-user-secret.yaml** (for postgres namespace):
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-cluster-os2iot
+  namespace: postgres
+type: Opaque
+stringData:
+  username: os2iot
+  password: <GENERATE_SECURE_PASSWORD>
+```
+
+**os2iot-user-secret-for-backend-ns.yaml** (for os2iot-backend namespace):
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-cluster-os2iot
+  namespace: os2iot-backend
+type: Opaque
+stringData:
+  username: os2iot
+  password: <SAME_PASSWORD_AS_ABOVE>
+```
+
+#### 2. Generate secure passwords
+
+```bash
+# Generate a random 32-character hex password
+echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
+```
+
+#### 3. Seal the secrets
+
+```bash
+cd applications/postgres
+
+# Seal secrets for postgres namespace (CloudNativePG roles)
+kubeseal --format yaml < local-secrets/chirpstack-user-secret.yaml > templates/chirpstack-user-sealed-secret.yaml
+kubeseal --format yaml < local-secrets/os2iot-user-secret.yaml > templates/os2iot-user-sealed-secret.yaml
+
+# Seal secrets for application namespaces (deployment access)
+kubeseal --format yaml < local-secrets/chirpstack-user-secret-for-chirpstack-ns.yaml > ../chirpstack/templates/postgres-cluster-chirpstack-sealed-secret.yaml
+kubeseal --format yaml < local-secrets/os2iot-user-secret-for-backend-ns.yaml > ../os2iot-backend/templates/postgres-cluster-os2iot-sealed-secret.yaml
+```
+
+#### 4. Commit the sealed secrets
+
+Only commit the sealed secret files (`*-sealed-secret.yaml`). The `local-secrets/` directories are gitignored.
+
+### Database Connection Details
+
+Applications connect to the database using:
+
+| Setting | Value |
+|---------|-------|
+| Host (read-write) | `postgres-cluster-rw.postgres` |
+| Host (read-only) | `postgres-cluster-ro.postgres` |
+| Port | `5432` |
+| Database | `os2iot` |
+
+---
 
 ## Mosquitto Broker
 
