@@ -1,0 +1,64 @@
+os2iotBackend:
+  image:
+    registry: ghcr.io/itk-dev
+    repository: os2iot-backend
+    tag: 'latest'
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  resources:
+    limits:
+      cpu: 150m
+      memory: 512Mi
+    requests:
+      cpu: 5m
+      memory: 128Mi
+
+  database:
+    # CloudNative PG cluster service name (cluster-name-rw.namespace)
+    hostname: cloudnative-pg-cluster-rw.chirpstack
+    port: "5432"
+    name: chirpstack
+    username: chirpstack
+    # Reference to chirpstack secret for password
+    passwordSecretName: cloudnative-pg-cluster-chirpstack
+    passwordSecretKey: password
+
+  kafka:
+    hostname: kafka-svc.kafka
+    port: "9092"
+
+  chirpstack:
+    hostname: chirpstack-svc.chirpstack
+    port: "8084"
+    apiKey: ""
+
+  mqtt:
+    csHostname: mosquitto-svc.mosquitto
+    csPort: "1883"
+    brokerHostname: mosquitto-broker-svc.mosquitto-broker
+    superUserPassword: ""
+
+  backend:
+    baseUrl: "https://test-os2iot-backend.os2iot.dk"
+
+  kombit:
+    certificatePrivateKey: ""
+    entryPoint: ""
+
+  log:
+    level: error
+
+  email:
+    host: smtp.ethereal.email
+    port: "587"
+    user: ""
+    pass: ""
+    from: ""
+
+  encryption:
+    symmetricKey: ""
+
+  ca:
+    keyPassword: ""

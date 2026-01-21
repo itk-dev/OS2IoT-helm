@@ -75,3 +75,8 @@ apps:
     project: kafka
     namespace: kafka
     automated: true
+
+  - name: os2iot-backend
+    project: os2iot-backend
+    namespace: os2iot-backend
+    automated: true

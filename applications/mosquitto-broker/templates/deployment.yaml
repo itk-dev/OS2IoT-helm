@@ -2,11 +2,6 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: {{ $.Chart.Name }}
-  labels:
-    helm.sh/chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
-    app.kubernetes.io/name: {{ $.Chart.Name }}
-    app.kubernetes.io/instance: {{ $.Chart.Name }}-{{ .Values.mosquittoBroker.image.tag }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.mosquittoBroker.replicaCount }}
   selector:
@@ -17,7 +12,6 @@ spec:
       maxSurge: 1
       maxUnavailable: 0
     type: RollingUpdate
-  revisionHistoryLimit: {{ .Values.mosquittoBroker.revisionHistoryLimit }}
   template:
     metadata:
       labels:

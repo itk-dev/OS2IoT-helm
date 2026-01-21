@@ -6,7 +6,6 @@ mosquittoBroker:
     pullPolicy: IfNotPresent
 
   replicaCount: 1
-  revisionHistoryLimit: 3
 
   resources:
     limits:

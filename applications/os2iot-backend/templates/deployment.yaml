@@ -1,0 +1,107 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ $.Chart.Name }}
+spec:
+  replicas: {{ .Values.os2iotBackend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ $.Chart.Name }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: {{ $.Chart.Name }}
+        version: "{{ $.Chart.Name }}-{{ .Values.os2iotBackend.image.tag }}"
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: {{ $.Chart.Name }}
+          image: "{{ .Values.os2iotBackend.image.registry }}/{{ .Values.os2iotBackend.image.repository }}:{{ .Values.os2iotBackend.image.tag }}"
+          imagePullPolicy: {{ .Values.os2iotBackend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          resources:
+            limits:
+              cpu: {{ .Values.os2iotBackend.resources.limits.cpu }}
+              memory: {{ .Values.os2iotBackend.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.os2iotBackend.resources.requests.cpu }}
+              memory: {{ .Values.os2iotBackend.resources.requests.memory }}
+          livenessProbe:
+            httpGet:
+              path: /api/v1/healthcheck
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 3
+          env:
+            - name: DATABASE_HOSTNAME
+              value: {{ .Values.os2iotBackend.database.hostname }}
+            - name: DATABASE_PORT
+              value: {{ .Values.os2iotBackend.database.port | quote }}
+            - name: DATABASE_NAME
+              value: {{ .Values.os2iotBackend.database.name }}
+            - name: DATABASE_USERNAME
+              value: {{ .Values.os2iotBackend.database.username }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.os2iotBackend.database.passwordSecretName }}
+                  key: {{ .Values.os2iotBackend.database.passwordSecretKey }}
+            - name: KAFKA_HOSTNAME
+              value: {{ .Values.os2iotBackend.kafka.hostname }}
+            - name: KAFKA_PORT
+              value: {{ .Values.os2iotBackend.kafka.port | quote }}
+            - name: CHIRPSTACK_HOSTNAME
+              value: {{ .Values.os2iotBackend.chirpstack.hostname }}
+            - name: CHIRPSTACK_PORT
+              value: {{ .Values.os2iotBackend.chirpstack.port | quote }}
+            - name: CS_MQTT_HOSTNAME
+              value: {{ .Values.os2iotBackend.mqtt.csHostname }}
+            - name: CS_MQTT_PORT
+              value: {{ .Values.os2iotBackend.mqtt.csPort | quote }}
+            - name: BACKEND_BASEURL
+              value: {{ .Values.os2iotBackend.backend.baseUrl | quote }}
+            - name: KOMBIT_CERTIFICATEPRIVATEKEY
+              value: {{ .Values.os2iotBackend.kombit.certificatePrivateKey | quote }}
+            - name: KOMBIT_ENTRYPOINT
+              value: {{ .Values.os2iotBackend.kombit.entryPoint | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.os2iotBackend.log.level }}
+            - name: EMAIL_PORT
+              value: {{ .Values.os2iotBackend.email.port | quote }}
+            - name: EMAIL_HOST
+              value: {{ .Values.os2iotBackend.email.host }}
+            - name: EMAIL_USER
+              value: {{ .Values.os2iotBackend.email.user | quote }}
+            - name: EMAIL_PASS
+              value: {{ .Values.os2iotBackend.email.pass | quote }}
+            - name: EMAIL_FROM
+              value: {{ .Values.os2iotBackend.email.from | quote }}
+            - name: MQTT_SUPER_USER_PASSWORD
+              value: {{ .Values.os2iotBackend.mqtt.superUserPassword | quote }}
+            - name: MQTT_BROKER_HOSTNAME
+              value: {{ .Values.os2iotBackend.mqtt.brokerHostname }}
+            - name: ENCRYPTION_SYMMETRIC_KEY
+              value: {{ .Values.os2iotBackend.encryption.symmetricKey | quote }}
+            - name: CA_KEY_PASSWORD
+              value: {{ .Values.os2iotBackend.ca.keyPassword | quote }}
+            - name: CHIRPSTACK_API_KEY
+              value: {{ .Values.os2iotBackend.chirpstack.apiKey | quote }}
+          volumeMounts:
+            - name: secret-ca-crt
+              mountPath: /tmp/os2iot/backend/resources
+              readOnly: true
+      volumes:
+        - name: "{{ $.Chart.Name }}-configmap"
+          configMap:
+            name: "{{ $.Chart.Name }}-configmap"
+        - name: secret-ca-crt
+          secret:
+            secretName: ca-keys
