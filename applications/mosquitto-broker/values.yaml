@@ -1,0 +1,26 @@
+mosquittoBroker:
+  image:
+    registry: ghcr.io/itk-dev
+    repository: os2iot-mosquitto
+    tag: 'latest'
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+  revisionHistoryLimit: 3
+
+  resources:
+    limits:
+      cpu: 150m
+      memory: 512Mi
+    requests:
+      cpu: 5m
+      memory: 128Mi
+
+  database:
+    host: ""
+    port: "5432"
+    username: ""
+    password: ""
+    name: ""
+    sslMode: "disable"
+

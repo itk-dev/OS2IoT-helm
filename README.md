@@ -130,3 +130,132 @@ stringData:
 ```
 
 kubeseal --format yaml  < applications/chirpstack/local-secrets/cloudnative-pg-cluster-secret.yaml   > applications/chirpstack/templates/cloudnative-pg-cluster-sealed-secret.yaml
+
+-------------------
+
+## Mosquitto Broker
+
+MQTT broker for OS2IoT with PostgreSQL-based authentication. Exposes two ports:
+
+| Port | Description |
+|------|-------------|
+| 8884 | MQTT with client certificate authentication |
+| 8885 | MQTT with username/password authentication |
+
+### Database Configuration
+
+Configure the PostgreSQL connection in your values override or via ArgoCD:
+
+```yaml
+mosquittoBroker:
+  database:
+    host: "os2iot-postgresql"
+    port: "5432"
+    username: "os2iot"
+    password: "your-password"
+    name: "os2iot"
+    sslMode: "disable"  # or "verify-ca" for production
+```
+
+### TLS Certificates
+
+The broker requires TLS certificates for secure MQTT communication. Certificates are stored as Kubernetes Secrets and managed via SealedSecrets.
+
+#### Required Secrets
+
+| Secret Name | Keys | Description |
+|-------------|------|-------------|
+| `ca-keys` | `ca.crt` | CA certificate for client verification |
+| `server-keys` | `server.crt`, `server.key` | Server certificate and private key |
+
+#### Option 1: Generate Self-Signed Certificates (Development)
+
+```bash
+cd applications/mosquitto-broker/local-secrets
+
+# Generate CA key and certificate (valid 10 years)
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=OS2IoT-Mosquitto-CA/O=OS2IoT/C=DK"
+
+# Generate server key and CSR
+openssl genrsa -out server.key 4096
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=mosquitto-broker/O=OS2IoT/C=DK"
+
+# Sign server certificate with CA (valid 10 years)
+openssl x509 -req -days 3650 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+# Clean up
+rm server.csr ca.srl
+```
+
+#### Option 2: Use Real Certificates (Production)
+
+For production, obtain certificates from a trusted CA or your organization's internal CA:
+
+1. Obtain a CA certificate (or use your organization's internal CA)
+2. Request a server certificate for your MQTT broker hostname
+3. Place `ca.crt`, `server.crt`, and `server.key` in `applications/mosquitto-broker/local-secrets/`
+
+#### Sealing the Certificates
+
+After generating or obtaining certificates, create and seal the secrets:
+
+1. Create `applications/mosquitto-broker/local-secrets/ca-keys.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ca-keys
+  namespace: mosquitto-broker
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    <your CA certificate content>
+    -----END CERTIFICATE-----
+```
+
+2. Create `applications/mosquitto-broker/local-secrets/server-keys.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: server-keys
+  namespace: mosquitto-broker
+type: Opaque
+stringData:
+  server.crt: |
+    -----BEGIN CERTIFICATE-----
+    <your server certificate content>
+    -----END CERTIFICATE-----
+  server.key: |
+    -----BEGIN PRIVATE KEY-----
+    <your server private key content>
+    -----END PRIVATE KEY-----
+```
+
+3. Seal the secrets:
+
+```bash
+kubeseal --format yaml < applications/mosquitto-broker/local-secrets/ca-keys.yaml > applications/mosquitto-broker/templates/ca-keys-sealed-secret.yaml
+kubeseal --format yaml < applications/mosquitto-broker/local-secrets/server-keys.yaml > applications/mosquitto-broker/templates/server-keys-sealed-secret.yaml
+```
+
+4. Commit only the sealed secrets - the `local-secrets/` directory is gitignored.
+
+#### Rotating Certificates
+
+To rotate certificates:
+
+1. Generate new certificates following the steps above
+2. Create new sealed secrets
+3. Commit and push - ArgoCD will automatically deploy the updated secrets
+4. Restart the broker pod:
+   ```bash
+   kubectl rollout restart deployment/mosquitto-broker -n mosquitto-broker
+   ```

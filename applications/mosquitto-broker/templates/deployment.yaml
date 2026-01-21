@@ -1,0 +1,65 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ $.Chart.Name }}
+  labels:
+    helm.sh/chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
+    app.kubernetes.io/name: {{ $.Chart.Name }}
+    app.kubernetes.io/instance: {{ $.Chart.Name }}-{{ .Values.mosquittoBroker.image.tag }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.mosquittoBroker.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ $.Chart.Name }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  revisionHistoryLimit: {{ .Values.mosquittoBroker.revisionHistoryLimit }}
+  template:
+    metadata:
+      labels:
+        app: {{ $.Chart.Name }}
+        version: "{{ $.Chart.Name }}-{{ .Values.mosquittoBroker.image.tag }}"
+    spec:
+      containers:
+        - name: {{ $.Chart.Name }}
+          image: "{{ .Values.mosquittoBroker.image.registry }}/{{ .Values.mosquittoBroker.image.repository }}:{{ .Values.mosquittoBroker.image.tag }}"
+          imagePullPolicy: {{ .Values.mosquittoBroker.image.pullPolicy }}
+          ports:
+            - name: mos-cert
+              containerPort: 8884
+              protocol: TCP
+            - name: mos-userpass
+              containerPort: 8885
+              protocol: TCP
+          resources:
+            limits:
+              cpu: {{ .Values.mosquittoBroker.resources.limits.cpu }}
+              memory: {{ .Values.mosquittoBroker.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.mosquittoBroker.resources.requests.cpu }}
+              memory: {{ .Values.mosquittoBroker.resources.requests.memory }}
+          volumeMounts:
+            - name: {{ $.Chart.Name }}-configmap
+              mountPath: /etc/mosquitto/conf.d/go-auth.conf
+              subPath: go-auth.conf
+            - name: secret-ca-crt
+              mountPath: /etc/mosquitto/ca_certificates
+              readOnly: true
+            - name: secret-server-key
+              mountPath: /etc/mosquitto/certs
+              readOnly: true
+      volumes:
+        - name: "{{ $.Chart.Name }}-configmap"
+          configMap:
+            name: "{{ $.Chart.Name }}-configmap"
+        - name: secret-ca-crt
+          secret:
+            secretName: ca-keys
+        - name: secret-server-key
+          secret:
+            secretName: server-keys
+      restartPolicy: Always

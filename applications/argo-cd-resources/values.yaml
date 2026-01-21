@@ -48,6 +48,11 @@ apps:
     namespace: mosquitto
     automated: true
 
+  - name: mosquitto-broker
+    project: mosquitto-broker
+    namespace: mosquitto-broker
+    automated: true
+
   - name: chirpstack
     project: chirpstack
     namespace: chirpstack
