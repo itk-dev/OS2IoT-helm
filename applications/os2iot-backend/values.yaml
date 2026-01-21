@@ -58,7 +58,5 @@ os2iotBackend:
     from: ""
 
   encryption:
-    symmetricKey: ""
-
-  ca:
-    keyPassword: ""
+    secretName: os2iot-backend-encryption
+    secretKey: symmetricKey

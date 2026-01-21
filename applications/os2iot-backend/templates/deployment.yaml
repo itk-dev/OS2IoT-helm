@@ -89,9 +89,15 @@ spec:
             - name: MQTT_BROKER_HOSTNAME
               value: {{ .Values.os2iotBackend.mqtt.brokerHostname }}
             - name: ENCRYPTION_SYMMETRIC_KEY
-              value: {{ .Values.os2iotBackend.encryption.symmetricKey | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.os2iotBackend.encryption.secretName }}
+                  key: {{ .Values.os2iotBackend.encryption.secretKey }}
             - name: CA_KEY_PASSWORD
-              value: {{ .Values.os2iotBackend.ca.keyPassword | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: ca-keys
+                  key: password
             - name: CHIRPSTACK_API_KEY
               value: {{ .Values.os2iotBackend.chirpstack.apiKey | quote }}
           volumeMounts:

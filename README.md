@@ -252,6 +252,59 @@ Applications connect to the database using:
 
 ---
 
+## OS2IoT Backend
+
+The OS2IoT backend requires a CA certificate and key for device authentication (MQTT client certificates).
+
+### CA Certificate Setup
+
+The backend needs a `ca-keys` secret containing the CA certificate and encrypted private key.
+
+#### 1. Generate CA certificate and key
+
+```bash
+cd applications/os2iot-backend/local-secrets
+
+# Generate CA private key (with password encryption)
+openssl genrsa -aes256 -passout pass:<CA_KEY_PASSWORD> -out ca.key 4096
+
+# Generate CA certificate (valid for 10 years)
+openssl req -new -x509 -days 3650 -key ca.key -passin pass:<CA_KEY_PASSWORD> -out ca.crt \
+  -subj "/CN=OS2IoT-Device-CA/O=OS2IoT/C=DK"
+```
+
+#### 2. Create the secret file
+
+Create `applications/os2iot-backend/local-secrets/ca-keys.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ca-keys
+  namespace: os2iot-backend
+type: Opaque
+stringData:
+  password: "<CA_KEY_PASSWORD>"
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    <contents of ca.crt>
+    -----END CERTIFICATE-----
+  ca.key: |
+    -----BEGIN ENCRYPTED PRIVATE KEY-----
+    <contents of ca.key>
+    -----END ENCRYPTED PRIVATE KEY-----
+```
+
+#### 3. Seal the secret
+
+```bash
+cd applications/os2iot-backend
+kubeseal --format yaml < local-secrets/ca-keys.yaml > templates/ca-keys-sealed-secret.yaml
+```
+
+---
+
 ## Mosquitto Broker
 
 MQTT broker for OS2IoT with PostgreSQL-based authentication. Exposes two ports:
