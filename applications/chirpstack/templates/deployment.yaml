@@ -51,14 +51,14 @@ spec:
               cpu: 5m
               memory: 128Mi
           volumeMounts:
+            - name: persistent-storage
+              mountPath: /etc/chirpstack/adr-modules
             - name: {{ $.Chart.Name }}-configmap
               mountPath: /etc/chirpstack/chirpstack.toml
               subPath: chirpstack.toml
             - name: {{ $.Chart.Name }}-configmap
               mountPath: /etc/chirpstack/region_eu868.toml
               subPath: region_eu868.toml
-            - name: persistent-storage
-              mountPath: /etc/chirpstack/
           readinessProbe:
             httpGet:
               path: /
