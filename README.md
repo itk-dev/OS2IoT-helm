@@ -303,6 +303,78 @@ cd applications/os2iot-backend
 kubeseal --format yaml < local-secrets/ca-keys.yaml > templates/ca-keys-sealed-secret.yaml
 ```
 
+### Encryption Key Setup
+
+The backend uses a symmetric encryption key for encrypting sensitive data in the database.
+
+#### 1. Generate an encryption key
+
+```bash
+# Generate a random 32-character hex key
+echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
+```
+
+#### 2. Create the secret file
+
+Create `applications/os2iot-backend/local-secrets/encryption-secret.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: os2iot-backend-encryption
+  namespace: os2iot-backend
+type: Opaque
+stringData:
+  symmetricKey: "<YOUR_GENERATED_KEY>"
+```
+
+#### 3. Seal the secret
+
+```bash
+cd applications/os2iot-backend
+kubeseal --format yaml < local-secrets/encryption-secret.yaml > templates/encryption-sealed-secret.yaml
+```
+
+### Email Credentials Setup
+
+The backend uses SMTP for sending emails (password resets, notifications, etc.).
+
+#### 1. Create the secret file
+
+Create `applications/os2iot-backend/local-secrets/email-secret.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: os2iot-backend-email
+  namespace: os2iot-backend
+type: Opaque
+stringData:
+  user: "<YOUR_SMTP_USERNAME>"
+  pass: "<YOUR_SMTP_PASSWORD>"
+```
+
+#### 2. Seal the secret
+
+```bash
+cd applications/os2iot-backend
+kubeseal --format yaml < local-secrets/email-secret.yaml > templates/email-sealed-secret.yaml
+```
+
+#### 3. Configure SMTP host and port
+
+Update `applications/os2iot-backend/values.yaml` with your SMTP server details:
+
+```yaml
+os2iotBackend:
+  email:
+    host: smtp.example.com
+    port: "587"
+    from: "noreply@example.com"
+```
+
 ---
 
 ## Mosquitto Broker

@@ -79,9 +79,15 @@ spec:
             - name: EMAIL_HOST
               value: {{ .Values.os2iotBackend.email.host }}
             - name: EMAIL_USER
-              value: {{ .Values.os2iotBackend.email.user | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.os2iotBackend.email.secretName }}
+                  key: {{ .Values.os2iotBackend.email.userSecretKey }}
             - name: EMAIL_PASS
-              value: {{ .Values.os2iotBackend.email.pass | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.os2iotBackend.email.secretName }}
+                  key: {{ .Values.os2iotBackend.email.passSecretKey }}
             - name: EMAIL_FROM
               value: {{ .Values.os2iotBackend.email.from | quote }}
             - name: MQTT_SUPER_USER_PASSWORD
