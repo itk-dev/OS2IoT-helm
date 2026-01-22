@@ -3,7 +3,7 @@ os2iotBackend:
     registry: ghcr.io/itk-dev
     repository: os2iot-backend
     tag: 'latest'
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
 
   replicaCount: 1
 
