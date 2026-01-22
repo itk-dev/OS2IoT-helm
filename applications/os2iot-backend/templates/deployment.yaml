@@ -118,7 +118,12 @@ spec:
               value: "verbose"
           volumeMounts:
             - name: secret-ca-crt
-              mountPath: /tmp/os2iot/backend/resources
+              mountPath: /tmp/os2iot/backend/resources/ca.crt
+              subPath: ca.crt
+              readOnly: true
+            - name: secret-ca-crt
+              mountPath: /tmp/os2iot/backend/resources/ca.key
+              subPath: ca.key
               readOnly: true
             - name: npm-logs
               mountPath: /home/node/.npm/_logs
