@@ -17,7 +17,7 @@ os2iotBackend:
 
   database:
     # Shared PostgreSQL cluster service name (cluster-name-rw.namespace)
-    hostname: postgres-cluster-rw.postgres
+    hostname: postgres-cluster-rw.postgres.svc.cluster.local
     port: "5432"
     name: os2iot
     username: os2iot
@@ -26,18 +26,18 @@ os2iotBackend:
     passwordSecretKey: password
 
   kafka:
-    hostname: kafka-svc.kafka
+    hostname: kafka-svc.kafka.svc.cluster.local
     port: "9092"
 
   chirpstack:
-    hostname: chirpstack-clusterip-svc.chirpstack
+    hostname: chirpstack-clusterip-svc.chirpstack.svc.cluster.local
     port: "8081"
     apiKey: ""
 
   mqtt:
-    csHostname: mosquitto-svc.mosquitto
+    csHostname: mosquitto-svc.mosquitto.svc.cluster.local
     csPort: "1883"
-    brokerHostname: mosquitto-broker-svc.mosquitto-broker
+    brokerHostname: mosquitto-broker-svc.mosquitto-broker.svc.cluster.local
     superUserPassword: ""
 
   backend:
