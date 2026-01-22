@@ -18,3 +18,7 @@ kafka:
     inter_broker_listener_name: INTERNAL
     zookeeper_connect: zookeeper-svc.zookeeper:2181
     allow_plaintext_listener: yes
+    # Single-broker settings (set to 1 for single broker, 3 for multi-broker)
+    offsets_topic_replication_factor: 1
+    transaction_state_log_replication_factor: 1
+    transaction_state_log_min_isr: 1

@@ -52,4 +52,10 @@ spec:
               value: "{{ $.Values.kafka.configuration.allow_plaintext_listener }}"
             - name: KAFKA_INTER_BROKER_LISTENER_NAME
               value: "{{ $.Values.kafka.configuration.inter_broker_listener_name }}"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "{{ $.Values.kafka.configuration.offsets_topic_replication_factor | default 1 }}"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "{{ $.Values.kafka.configuration.transaction_state_log_replication_factor | default 1 }}"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "{{ $.Values.kafka.configuration.transaction_state_log_min_isr | default 1 }}"
       restartPolicy: Always
