@@ -42,11 +42,13 @@ spec:
 
                 -- Grant chirpstack full access
                 GRANT ALL PRIVILEGES ON DATABASE os2iot TO chirpstack;
-                GRANT ALL PRIVILEGES ON SCHEMA public TO chirpstack;
+                GRANT USAGE, CREATE ON SCHEMA public TO chirpstack;
                 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO chirpstack;
                 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO chirpstack;
                 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO chirpstack;
                 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO chirpstack;
+                -- Set default search_path for chirpstack
+                ALTER ROLE chirpstack SET search_path TO public;
 
                 -- Grant mqtt read-only access for authentication queries
                 GRANT CONNECT ON DATABASE os2iot TO mqtt;

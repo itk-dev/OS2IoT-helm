@@ -422,6 +422,67 @@ kubectl cp os2iot-backend/<pod-name>:/home/node/.npm/_logs ./npm-logs
 | Database connection refused | PostgreSQL not ready | Check postgres-cluster pods and secrets |
 | Missing secret key | Sealed secret not deployed | Verify sealed secrets exist in namespace |
 
+### ChirpStack API Key Setup
+
+The OS2IoT backend requires a ChirpStack API key to communicate with the LoRaWAN network server for device management and data retrieval.
+
+#### 1. Access ChirpStack UI
+
+Access the ChirpStack web interface:
+
+```bash
+# Option 1: Via Ingress (if configured)
+# Navigate to https://chirpstack.<FQDN>
+
+# Option 2: Via port-forward
+kubectl port-forward svc/chirpstack-clusterip-svc -n chirpstack 8080:8081
+# Then open http://localhost:8080
+```
+
+#### 2. Login and create API key
+
+1. Login with the default credentials: `admin` / `admin`
+2. Navigate to **API Keys** in the left menu
+3. Click **Add API key**
+4. Give it a descriptive name (e.g., "os2iot-backend")
+5. Click **Submit**
+6. **Important**: Copy the generated token immediately - it will only be shown once
+
+#### 3. Create the secret file
+
+Create `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: chirpstack-api-key
+  namespace: os2iot-backend
+type: Opaque
+stringData:
+  apiKey: "<YOUR_CHIRPSTACK_API_KEY>"
+```
+
+#### 4. Seal the secret
+
+```bash
+cd applications/os2iot-backend
+kubeseal --format yaml < local-secrets/chirpstack-api-key.yaml > templates/chirpstack-api-key-sealed-secret.yaml
+```
+
+#### 5. Verify backend configuration
+
+Ensure `applications/os2iot-backend/values.yaml` has the correct ChirpStack service URL:
+
+```yaml
+os2iotBackend:
+  chirpstack:
+    hostname: "chirpstack-clusterip-svc.chirpstack"
+    port: "8081"
+```
+
+The backend will automatically use the `chirpstack-api-key` secret for authentication.
+
 ---
 
 ## Mosquitto Broker
