@@ -32,7 +32,9 @@ os2iotBackend:
   chirpstack:
     hostname: chirpstack-clusterip-svc.chirpstack.svc.cluster.local
     port: "8081"
-    apiKey: ""
+    # API key stored in sealed secret
+    apiKeySecretName: chirpstack-api-key
+    apiKeySecretKey: apiKey
 
   mqtt:
     csHostname: mosquitto-svc.mosquitto.svc.cluster.local

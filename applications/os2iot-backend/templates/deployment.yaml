@@ -113,7 +113,10 @@ spec:
                   name: ca-keys
                   key: password
             - name: CHIRPSTACK_API_KEY
-              value: {{ .Values.os2iotBackend.chirpstack.apiKey | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.os2iotBackend.chirpstack.apiKeySecretName }}
+                  key: {{ .Values.os2iotBackend.chirpstack.apiKeySecretKey }}
             - name: NPM_CONFIG_LOGLEVEL
               value: "verbose"
           volumeMounts:
