@@ -30,8 +30,8 @@ os2iotBackend:
     port: "9092"
 
   chirpstack:
-    hostname: chirpstack-svc.chirpstack
-    port: "8084"
+    hostname: chirpstack-clusterip-svc.chirpstack
+    port: "8081"
     apiKey: ""
 
   mqtt:
