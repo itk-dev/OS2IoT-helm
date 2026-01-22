@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $.Chart.Name }}-configmap
+data:
+  PRODUCTION: {{ .Values.os2iotFrontend.config.production | quote }}
+  BASE_URL: {{ .Values.os2iotFrontend.config.baseUrl | quote }}
+  TABLE_PAGE_SIZE: {{ .Values.os2iotFrontend.config.tablePageSize | quote }}

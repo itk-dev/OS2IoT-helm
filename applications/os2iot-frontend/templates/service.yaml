@@ -1,0 +1,15 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ $.Chart.Name }}-svc
+  labels:
+    app: {{ $.Chart.Name }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.os2iotFrontend.service.port }}
+      targetPort: {{ .Values.os2iotFrontend.containerPort }}
+      protocol: TCP
+  selector:
+    app: {{ $.Chart.Name }}

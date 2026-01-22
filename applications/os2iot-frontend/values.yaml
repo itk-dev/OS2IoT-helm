@@ -1,0 +1,26 @@
+os2iotFrontend:
+  image:
+    registry: ghcr.io/itk-dev
+    repository: os2iot-frontend
+    tag: 'latest'
+    pullPolicy: Always
+
+  replicaCount: 1
+
+  service:
+    port: 8081
+
+  containerPort: 8081
+
+  resources:
+    limits:
+      cpu: 150m
+      memory: 512Mi
+    requests:
+      cpu: 5m
+      memory: 128Mi
+
+  config:
+    production: "true"
+    baseUrl: "http://localhost:3000/api/v1/"
+    tablePageSize: "25"

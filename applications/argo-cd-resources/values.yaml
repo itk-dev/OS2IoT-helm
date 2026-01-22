@@ -83,3 +83,8 @@ apps:
     project: os2iot-backend
     namespace: os2iot-backend
     automated: true
+
+  - name: os2iot-frontend
+    project: os2iot-frontend
+    namespace: os2iot-frontend
+    automated: true
