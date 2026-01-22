@@ -58,4 +58,22 @@ spec:
               value: "{{ $.Values.kafka.configuration.transaction_state_log_replication_factor | default 1 }}"
             - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
               value: "{{ $.Values.kafka.configuration.transaction_state_log_min_isr | default 1 }}"
+          startupProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
       restartPolicy: Always

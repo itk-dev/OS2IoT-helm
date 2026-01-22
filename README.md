@@ -441,8 +441,10 @@ kubectl port-forward svc/chirpstack-clusterip-svc -n chirpstack 8080:8081
 
 #### 2. Login and create API key
 
+**Important**: The OS2IoT backend requires an **Admin (Network Server)** API key, not a Tenant API key. The backend queries gateways and devices across the entire ChirpStack instance, which requires admin-level access.
+
 1. Login with the default credentials: `admin` / `admin`
-2. Navigate to **API Keys** in the left menu
+2. Navigate to **Network Server** → **API Keys** in the left menu (not Tenant API Keys)
 3. Click **Add API key**
 4. Give it a descriptive name (e.g., "os2iot-backend")
 5. Click **Submit**
