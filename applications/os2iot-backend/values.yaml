@@ -27,7 +27,7 @@ os2iotBackend:
     passwordSecretKey: password
 
   kafka:
-    hostname: kafka-svc.kafka.svc.cluster.local
+    hostname: kafka-svc.kafka
     port: "9092"
 
   chirpstack:
