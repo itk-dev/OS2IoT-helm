@@ -85,6 +85,7 @@ echo "  2. Install ArgoCD"
 echo "  3. Install Sealed Secrets"
 echo "  4. Generate and seal application secrets"
 echo "  5. Install ArgoCD resources (app-of-apps)"
+echo "  6. Generate ChirpStack API key"
 echo ""
 
 check_kubectl_context
@@ -332,6 +333,81 @@ echo "Or use the ArgoCD UI:"
 echo -e "  ${CYAN}kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8443:443${NC}"
 echo ""
 
+# Generate ChirpStack API Key
+print_header "Step 6: Generate ChirpStack API Key"
+
+echo "The OS2IoT backend requires a Network Server API key from ChirpStack."
+echo ""
+
+print_step "Waiting for ChirpStack to deploy..."
+# Wait for ChirpStack deployment
+kubectl wait --for=condition=available --timeout=300s deployment/chirpstack -n chirpstack 2>/dev/null || {
+    print_warning "ChirpStack deployment not found or not ready yet"
+    echo "It may still be syncing. You can generate the API key later with:"
+    echo -e "  ${CYAN}./generate-chirpstack-api-key.sh${NC}"
+    echo ""
+}
+
+# Check if the Job is enabled
+if kubectl get job chirpstack-create-api-key -n chirpstack >/dev/null 2>&1; then
+    print_step "Waiting for API key generation job to complete..."
+    kubectl wait --for=condition=complete --timeout=120s job/chirpstack-create-api-key -n chirpstack 2>/dev/null || {
+        print_warning "Job not complete yet. Continuing..."
+    }
+fi
+
+echo ""
+echo "You have two options to generate the ChirpStack API key:"
+echo ""
+echo "Option 1 (Recommended): Use the helper script"
+echo -e "  ${CYAN}./generate-chirpstack-api-key.sh${NC}"
+echo ""
+echo "Option 2: Retrieve from Job logs"
+echo -e "  ${CYAN}kubectl logs job/chirpstack-create-api-key -n chirpstack${NC}"
+echo "  Then manually update applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml"
+echo ""
+
+read -p "Would you like to run the helper script now? (Y/n): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+    print_step "Running generate-chirpstack-api-key.sh..."
+    echo ""
+
+    if ./generate-chirpstack-api-key.sh; then
+        echo ""
+        print_success "ChirpStack API key generated and secret file updated!"
+
+        print_step "Sealing the ChirpStack API key..."
+        cd applications/os2iot-backend
+        if kubeseal --format yaml --controller-name=sealed-secrets --controller-namespace=kube-system \
+            < local-secrets/chirpstack-api-key.yaml \
+            > templates/chirpstack-api-key-sealed-secret.yaml 2>/dev/null; then
+            cd ../..
+            print_success "ChirpStack API key sealed!"
+
+            echo ""
+            print_warning "Don't forget to commit the sealed secret:"
+            echo -e "  ${CYAN}git add applications/os2iot-backend/templates/chirpstack-api-key-sealed-secret.yaml${NC}"
+            echo -e "  ${CYAN}git commit -m 'Add ChirpStack API key'${NC}"
+            echo -e "  ${CYAN}git push${NC}"
+            echo ""
+        else
+            cd ../..
+            print_error "Failed to seal the API key"
+            echo "You can seal it manually later with: ./seal-secrets.sh"
+            echo ""
+        fi
+    else
+        print_warning "API key generation failed or was skipped"
+        echo "You can run it manually later: ./generate-chirpstack-api-key.sh"
+        echo ""
+    fi
+else
+    print_warning "Skipped API key generation"
+    echo "Generate it later with: ./generate-chirpstack-api-key.sh"
+    echo ""
+fi
+
 # Final summary
 print_header "Bootstrap Complete!"
 
@@ -346,10 +422,12 @@ echo -e "   Open: ${CYAN}https://localhost:8443${NC}"
 echo ""
 echo "3. Update placeholder secrets (if any):"
 echo "   - applications/os2iot-backend/local-secrets/email-secret.yaml"
-echo "   - applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml"
 echo "   Then run './seal-secrets.sh' and commit the changes."
 echo ""
-echo "4. Check application health:"
+echo "4. Generate ChirpStack API key (if not done yet):"
+echo -e "   ${CYAN}./generate-chirpstack-api-key.sh${NC}"
+echo ""
+echo "5. Check application health:"
 echo -e "   ${CYAN}kubectl get pods --all-namespaces${NC}"
 echo ""
 

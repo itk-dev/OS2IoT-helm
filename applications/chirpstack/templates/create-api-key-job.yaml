@@ -1,0 +1,68 @@
+{{- if .Values.chirpstack.createApiKeyJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: chirpstack-create-api-key
+  namespace: chirpstack
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 86400  # Keep for 24 hours
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: create-api-key
+          image: {{ .Values.chirpstack.image.registry }}/{{ .Values.chirpstack.image.repository }}:{{ .Values.chirpstack.image.tag }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "================================================"
+              echo "Creating ChirpStack Network Server API Key"
+              echo "================================================"
+              echo ""
+
+              # Wait for ChirpStack to be ready
+              echo "Waiting for ChirpStack API to be ready..."
+              until wget -q -O- http://chirpstack-clusterip-svc:8081/api 2>/dev/null; do
+                echo "  Still waiting..."
+                sleep 5
+              done
+
+              echo "ChirpStack is ready. Creating API key..."
+              echo ""
+
+              # Create API key
+              chirpstack --config /etc/chirpstack create-api-key --name os2iot-backend
+
+              echo ""
+              echo "================================================"
+              echo "IMPORTANT: Copy the API key above and save it to:"
+              echo "  applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml"
+              echo ""
+              echo "Then run:"
+              echo "  cd applications/os2iot-backend"
+              echo "  kubeseal --format yaml \\"
+              echo "    --controller-name=sealed-secrets \\"
+              echo "    --controller-namespace=kube-system \\"
+              echo "    < local-secrets/chirpstack-api-key.yaml \\"
+              echo "    > templates/chirpstack-api-key-sealed-secret.yaml"
+              echo "  git add templates/chirpstack-api-key-sealed-secret.yaml"
+              echo "  git commit -m 'Add ChirpStack API key'"
+              echo "  git push"
+              echo ""
+              echo "Or use the helper script:"
+              echo "  Retrieve the job logs to get the API key, then run:"
+              echo "  ./seal-secrets.sh"
+              echo "================================================"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/chirpstack
+      volumes:
+        - name: config
+          configMap:
+            name: chirpstack-config
+{{- end }}

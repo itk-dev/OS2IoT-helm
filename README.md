@@ -26,6 +26,11 @@ domain and setup. This document will guide you through the process of setting up
 ./seal-secrets.sh
 ```
 
+**Generate ChirpStack API key:**
+```bash
+./generate-chirpstack-api-key.sh
+```
+
 **Access ArgoCD UI:**
 ```bash
 kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8443:443
@@ -530,35 +535,46 @@ kubectl cp os2iot-backend/<pod-name>:/home/node/.npm/_logs ./npm-logs
 
 ### ChirpStack API Key Setup
 
-The OS2IoT backend requires a ChirpStack API key to communicate with the LoRaWAN network server for device management and data retrieval.
+The OS2IoT backend requires a **Network Server (Admin) API key** from ChirpStack to communicate with the LoRaWAN network server for device management and data retrieval.
 
-#### 1. Access ChirpStack UI
+**Important**: This must be a Network Server API key (not a Tenant API key), as the backend queries gateways and devices across the entire ChirpStack instance.
 
-Access the ChirpStack web interface:
+#### Option 1: Automated Generation (Recommended)
+
+A Kubernetes Job automatically generates the API key when ChirpStack is deployed.
+
+**Using the helper script:**
+
+After ChirpStack is deployed, run the helper script to generate and configure the API key:
 
 ```bash
-# Option 1: Via Ingress (if configured)
-# Navigate to https://chirpstack.<FQDN>
-
-# Option 2: Via port-forward
-kubectl port-forward svc/chirpstack-clusterip-svc -n chirpstack 8080:8081
-# Then open http://localhost:8080
+./generate-chirpstack-api-key.sh
 ```
 
-#### 2. Login and create API key
+This script will:
+1. Connect to the running ChirpStack pod
+2. Generate a Network Server API key via ChirpStack CLI
+3. Automatically create/update `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`
+4. Display next steps for sealing and committing
 
-**Important**: The OS2IoT backend requires an **Admin (Network Server)** API key, not a Tenant API key. The backend queries gateways and devices across the entire ChirpStack instance, which requires admin-level access.
+Then seal and commit the secret:
 
-1. Login with the default credentials: `admin` / `admin`
-2. Navigate to **Network Server** → **API Keys** in the left menu (not Tenant API Keys)
-3. Click **Add API key**
-4. Give it a descriptive name (e.g., "os2iot-backend")
-5. Click **Submit**
-6. **Important**: Copy the generated token immediately - it will only be shown once
+```bash
+./seal-secrets.sh
+git add applications/os2iot-backend/templates/chirpstack-api-key-sealed-secret.yaml
+git commit -m "Add ChirpStack API key"
+git push
+```
 
-#### 3. Create the secret file
+**Retrieving from the Job logs:**
 
-Create `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`:
+Alternatively, retrieve the API key from the Job that runs automatically during deployment:
+
+```bash
+kubectl logs job/chirpstack-create-api-key -n chirpstack
+```
+
+Look for the API key in the output (it will be a long JWT token starting with `eyJ`). Copy it and update `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -568,17 +584,54 @@ metadata:
   namespace: os2iot-backend
 type: Opaque
 stringData:
-  apiKey: "<YOUR_CHIRPSTACK_API_KEY>"
+  apiKey: "<PASTE_API_KEY_HERE>"
 ```
 
-#### 4. Seal the secret
+Then seal and commit as shown above.
 
-```bash
-cd applications/os2iot-backend
-kubeseal --format yaml < local-secrets/chirpstack-api-key.yaml > templates/chirpstack-api-key-sealed-secret.yaml
-```
+#### Option 2: Manual Creation via UI
 
-#### 5. Verify backend configuration
+If you prefer manual control, create the API key through the ChirpStack UI:
+
+1. Access ChirpStack:
+   ```bash
+   kubectl port-forward svc/chirpstack-clusterip-svc -n chirpstack 8080:8081
+   # Then open http://localhost:8080
+   ```
+
+2. Login with default credentials: `admin` / `admin`
+
+3. Navigate to **Network Server** → **API Keys** in the left menu (NOT Tenant API Keys)
+
+4. Click **Add API key**, give it a descriptive name (e.g., "os2iot-backend"), and click **Submit**
+
+5. **Important**: Copy the generated token immediately - it will only be shown once
+
+6. Create `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`:
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: chirpstack-api-key
+     namespace: os2iot-backend
+   type: Opaque
+   stringData:
+     apiKey: "<YOUR_CHIRPSTACK_API_KEY>"
+   ```
+
+7. Seal and commit:
+   ```bash
+   ./seal-secrets.sh
+   git add applications/os2iot-backend/templates/chirpstack-api-key-sealed-secret.yaml
+   git commit -m "Add ChirpStack API key"
+   git push
+   ```
+
+#### Disable Automatic Job
+
+To disable the automatic API key generation job, set `chirpstack.createApiKeyJob.enabled: false` in `applications/chirpstack/values.yaml`.
+
+#### Verify Configuration
 
 Ensure `applications/os2iot-backend/values.yaml` has the correct ChirpStack service URL:
 
