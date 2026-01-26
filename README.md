@@ -14,6 +14,29 @@ given service can be installed. Some services also require keys/secrets from one
 Also, because all configuration is stored in GitOps as code, you will need to update secrets and URLs to match your
 domain and setup. This document will guide you through the process of setting up OS2IoT.
 
+## Quick Reference
+
+**Bootstrap the cluster (automated):**
+```bash
+./bootstrap.sh
+```
+
+**Generate and seal secrets:**
+```bash
+./seal-secrets.sh
+```
+
+**Access ArgoCD UI:**
+```bash
+kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8443:443
+# Open https://localhost:8443
+```
+
+**Get ArgoCD admin password:**
+```bash
+kubectl -n argo-cd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+```
+
 ## Variables
 
 Throughout this installation documentation, some values are used multiple times. These values are defined in the
@@ -35,6 +58,40 @@ echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
 The first step is
 to [create](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)
 a new GitHub repository based on this [template repository](https://github.com/os2iot/OS2IoT-helm).
+
+### Quick Start (Automated)
+
+For a fully automated bootstrap, use the provided script:
+
+```shell
+./bootstrap.sh
+```
+
+The script will:
+1. Verify all prerequisites (kubectl, helm, kubeseal)
+2. Install ArgoCD
+3. Install Sealed Secrets
+4. Generate and seal all secrets
+5. Prompt you to commit sealed secrets to Git
+6. Install ArgoCD resources (app-of-apps)
+
+**Prerequisites:**
+- kubectl configured with cluster access
+- helm 3 installed
+- kubeseal CLI installed
+- Repository URL configured in `applications/argo-cd-resources/values.yaml`
+
+### Manual Bootstrap Sequence
+
+If you prefer manual control, follow this exact sequence:
+
+1. **Install ArgoCD** - GitOps controller (manual installation)
+2. **Install Sealed Secrets** - Secret encryption controller (manual installation)
+3. **Generate and seal secrets** - Create and encrypt all application secrets
+4. **Commit sealed secrets** - Push encrypted secrets to Git
+5. **Install Argo resources** - ArgoCD adopts sealed-secrets and auto-syncs all applications
+
+This ensures the sealed-secrets controller is ready before any applications try to use SealedSecret resources.
 
 ### ArgoCD
 
@@ -81,6 +138,52 @@ kubectl -n argo-cd get secret argocd-initial-admin-secret -o jsonpath="{.data.pa
 Optionally, [Authentik](https://goauthentik.io/) can be installed as a single-sign-on (SSO) provider for
 the internal services in the cluster. See the [Authentik](authentik.md) for more information.
 
+### Sealed Secrets (Bootstrap)
+
+Before installing argo-cd-resources, install sealed-secrets to enable secret encryption. This must be done before
+argo-cd-resources to avoid a chicken-and-egg problem where applications try to deploy SealedSecret resources before
+the controller exists.
+
+Install sealed-secrets:
+
+```shell
+cd applications/sealed-secrets
+helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+helm repo update
+helm dependency build
+helm template sealed-secrets . -n kube-system | kubectl apply -f -
+```
+
+Wait for the controller to be ready:
+
+```shell
+kubectl wait --for=condition=available --timeout=300s deployment/sealed-secrets -n kube-system
+```
+
+You can verify it's running:
+
+```shell
+kubectl get deployment sealed-secrets -n kube-system
+```
+
+Now generate and seal all application secrets:
+
+```shell
+cd ../..
+./seal-secrets.sh
+```
+
+The script will seal all secrets in the repository. If any secrets contain placeholder values (like `YOUR_SMTP_USERNAME`),
+the script will skip them and warn you to update them first.
+
+Once all secrets are sealed successfully, commit them to your repository:
+
+```shell
+git add applications/*/templates/*-sealed-secret.yaml
+git commit -m "Add sealed secrets for applications"
+git push
+```
+
 ### Argo resources (applications)
 
 Now we can install the Argo resources that define the applications and their configuration. But first, we need to
@@ -108,10 +211,13 @@ helm template argo-cd-resources . -n argo-cd | kubectl apply -f -
 ```
 
 This will install all the applications from `applications/argo-cd-resources/values.yaml` that are set to
-`automated: true` which are all the applications that do not need configuration changes.
+`automated: true`. ArgoCD will:
+- Adopt the existing sealed-secrets deployment and manage it going forward
+- Automatically sync all applications that have their sealed secrets committed
 
-All other applications will need to have their configuration updated and committed to the repository
-before they can be installed.
+All applications can now deploy automatically since sealed-secrets was installed first.
+
+> **Note:** The automated `bootstrap.sh` script performs all the steps above automatically. For future deployments, consider using it to simplify the process.
 
 
 ## PostgreSQL Database
