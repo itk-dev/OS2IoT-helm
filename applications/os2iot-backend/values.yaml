@@ -17,7 +17,8 @@ os2iotBackend:
 
   database:
     # Shared PostgreSQL cluster service name (cluster-name-rw.namespace)
-    hostname: postgres-cluster-rw.postgres.svc.cluster.local
+    # Use short name for cross-namespace DNS - Node.js has issues with full FQDN
+    hostname: postgres-cluster-rw.postgres
     port: "5432"
     name: os2iot
     username: os2iot
@@ -26,20 +27,20 @@ os2iotBackend:
     passwordSecretKey: password
 
   kafka:
-    hostname: kafka-svc.kafka.svc.cluster.local
+    hostname: kafka-svc.kafka
     port: "9092"
 
   chirpstack:
-    hostname: chirpstack-clusterip-svc.chirpstack.svc.cluster.local
+    hostname: chirpstack-clusterip-svc.chirpstack
     port: "8081"
     # API key stored in sealed secret
     apiKeySecretName: chirpstack-api-key
     apiKeySecretKey: apiKey
 
   mqtt:
-    csHostname: mosquitto-svc.mosquitto.svc.cluster.local
+    csHostname: mosquitto-svc.mosquitto
     csPort: "1883"
-    brokerHostname: mosquitto-broker-svc.mosquitto-broker.svc.cluster.local
+    brokerHostname: mosquitto-broker-svc.mosquitto-broker
     superUserPassword: ""
 
   backend:
