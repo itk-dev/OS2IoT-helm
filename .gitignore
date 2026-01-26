@@ -5,7 +5,7 @@
 !**/*sealed*.yaml
 
 # Don't commit download helm charts
-applications/argo-cd/charts
+**/charts
 **/Chart.lock
 
 # Protected download sealed secret public certificates.
