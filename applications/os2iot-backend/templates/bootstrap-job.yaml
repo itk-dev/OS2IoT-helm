@@ -1,0 +1,90 @@
+{{- if .Values.os2iotBackend.bootstrapJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: os2iot-backend-bootstrap
+  namespace: os2iot-backend
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 86400  # Keep for 24 hours
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: bootstrap
+          image: curlimages/curl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "================================================"
+              echo "OS2IoT Backend Bootstrap"
+              echo "================================================"
+              echo ""
+
+              # Wait for backend to be ready
+              echo "Waiting for backend API to be ready..."
+              until wget -q -O- http://os2iot-backend-svc:3000/api/v1/healthcheck 2>/dev/null; do
+                echo "  Still waiting..."
+                sleep 5
+              done
+
+              echo "Backend is ready!"
+              echo ""
+
+              # Login and get token
+              echo "Authenticating as global admin..."
+              TOKEN_RESPONSE=$(curl -s -X POST \
+                http://os2iot-backend-svc:3000/api/v1/auth/login \
+                -H "Content-Type: application/json" \
+                -d '{"username":"global-admin@os2iot.dk","password":"hunter2"}')
+
+              ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+
+              if [ -z "$ACCESS_TOKEN" ]; then
+                echo "Error: Failed to get access token"
+                echo "Response: $TOKEN_RESPONSE"
+                exit 1
+              fi
+
+              echo "Authentication successful!"
+              echo ""
+
+              # Create default organization
+              echo "Creating default organization..."
+              ORG_RESPONSE=$(curl -s -X POST \
+                http://os2iot-backend-svc:3000/api/v1/organization \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer $ACCESS_TOKEN" \
+                -d '{"name":"Default Organization"}')
+
+              ORG_ID=$(echo $ORG_RESPONSE | grep -o '"id":[0-9]*' | cut -d':' -f2)
+
+              if [ -z "$ORG_ID" ]; then
+                # Check if organization already exists
+                if echo "$ORG_RESPONSE" | grep -q "already exists\|duplicate"; then
+                  echo "Organization already exists - skipping"
+                else
+                  echo "Error: Failed to create organization"
+                  echo "Response: $ORG_RESPONSE"
+                  exit 1
+                fi
+              else
+                echo "Default organization created successfully (ID: $ORG_ID)"
+              fi
+
+              echo ""
+              echo "================================================"
+              echo "Bootstrap complete!"
+              echo "================================================"
+              echo ""
+              echo "You can now log in to the frontend with:"
+              echo "  Email: global-admin@os2iot.dk"
+              echo "  Password: hunter2"
+              echo ""
+              echo "IMPORTANT: Change the default password after first login!"
+              echo "================================================"
+{{- end }}

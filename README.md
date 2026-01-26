@@ -31,6 +31,11 @@ domain and setup. This document will guide you through the process of setting up
 ./generate-chirpstack-api-key.sh
 ```
 
+**Bootstrap OS2IoT organization:**
+```bash
+./bootstrap-os2iot-org.sh
+```
+
 **Access ArgoCD UI:**
 ```bash
 kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8443:443
@@ -643,6 +648,57 @@ os2iotBackend:
 ```
 
 The backend will automatically use the `chirpstack-api-key` secret for authentication.
+
+---
+
+## OS2IoT Organization Bootstrap
+
+After the backend is deployed and running, you need to create a default organization to start using OS2IoT.
+
+### Automated Bootstrap (Recommended)
+
+A Kubernetes Job automatically creates a default organization after the backend is deployed. This runs as an ArgoCD PostSync hook.
+
+To verify the bootstrap job ran successfully:
+
+```bash
+kubectl logs job/os2iot-backend-bootstrap -n os2iot-backend
+```
+
+### Manual Bootstrap
+
+If the automated bootstrap fails or you want to run it manually, use the helper script:
+
+```bash
+./bootstrap-os2iot-org.sh
+```
+
+This script will:
+1. Connect to the backend API via port-forward
+2. Authenticate with the default admin credentials
+3. Create a "Default Organization"
+4. Display the login credentials
+
+### Default Credentials
+
+After bootstrap, you can log in with:
+
+- **Email:** `global-admin@os2iot.dk`
+- **Password:** `hunter2`
+
+**⚠️ IMPORTANT:** Change the default password immediately after first login!
+
+### Access the Frontend
+
+```bash
+kubectl port-forward -n os2iot-frontend svc/os2iot-frontend-svc 8081:8081
+```
+
+Then open: http://localhost:8081
+
+### Disable Automatic Bootstrap
+
+To disable the automatic bootstrap job, set `os2iotBackend.bootstrapJob.enabled: false` in `applications/os2iot-backend/values.yaml`.
 
 ---
 

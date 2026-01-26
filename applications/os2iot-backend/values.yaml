@@ -64,3 +64,6 @@ os2iotBackend:
   encryption:
     secretName: os2iot-backend-encryption
     secretKey: symmetricKey
+
+  bootstrapJob:
+    enabled: true  # Set to false to skip automatic bootstrap
