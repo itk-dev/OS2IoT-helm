@@ -47,6 +47,18 @@ kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8443:443
 kubectl -n argo-cd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 ```
 
+**Access OS2IoT Frontend (requires BOTH port-forwards):**
+```bash
+# Terminal 1: Backend
+kubectl port-forward -n os2iot-backend svc/os2iot-backend-svc 3000:3000
+
+# Terminal 2: Frontend
+kubectl port-forward -n os2iot-frontend svc/os2iot-frontend-svc 8081:8081
+
+# Open http://localhost:8081
+# Login: global-admin@os2iot.dk / hunter2
+```
+
 ## Variables
 
 Throughout this installation documentation, some values are used multiple times. These values are defined in the
@@ -690,11 +702,19 @@ After bootstrap, you can log in with:
 
 ### Access the Frontend
 
+**IMPORTANT:** You must port-forward BOTH the frontend AND backend for the frontend to work properly:
+
 ```bash
+# Terminal 1: Backend API
+kubectl port-forward -n os2iot-backend svc/os2iot-backend-svc 3000:3000
+
+# Terminal 2: Frontend
 kubectl port-forward -n os2iot-frontend svc/os2iot-frontend-svc 8081:8081
 ```
 
 Then open: http://localhost:8081
+
+**Why both?** The frontend is configured to connect to `http://localhost:3000/api/v1/`. When you port-forward only the frontend, the browser cannot reach the backend API, causing CORS errors. Both port-forwards must be active simultaneously.
 
 ### Disable Automatic Bootstrap
 
