@@ -398,8 +398,12 @@ if [[ ! $REPLY =~ ^[Nn]$ ]]; then
             echo ""
         fi
     else
-        print_warning "API key generation failed or was skipped"
-        echo "You can run it manually later: ./generate-chirpstack-api-key.sh"
+        echo ""
+        print_warning "API key generation script failed"
+        echo "This is normal if ChirpStack is not deployed yet."
+        echo ""
+        echo "You can generate the API key later after ChirpStack is running:"
+        echo -e "  ${CYAN}./generate-chirpstack-api-key.sh${NC}"
         echo ""
     fi
 else

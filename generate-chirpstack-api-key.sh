@@ -20,14 +20,40 @@ if ! command -v kubectl &> /dev/null; then
     exit 1
 fi
 
+# Check kubectl connectivity
+echo -e "${BLUE}Checking Kubernetes cluster connection...${NC}"
+if ! kubectl cluster-info &> /dev/null; then
+    echo -e "${RED}Error: Cannot connect to Kubernetes cluster${NC}"
+    echo "Make sure:"
+    echo "  - kubectl is configured with the correct context"
+    echo "  - The cluster is running and accessible"
+    echo ""
+    echo "Check connection with: kubectl cluster-info"
+    exit 1
+fi
+echo -e "${GREEN}✓ Connected to cluster${NC}"
+
+# Check if chirpstack namespace exists
+if ! kubectl get namespace chirpstack &> /dev/null; then
+    echo -e "${RED}Error: chirpstack namespace not found${NC}"
+    echo "ChirpStack has not been deployed yet."
+    echo "Deploy it via ArgoCD first, then run this script."
+    exit 1
+fi
+
 # Find ChirpStack pod
 echo -e "${BLUE}Finding ChirpStack pod...${NC}"
 POD=$(kubectl get pod -n chirpstack -l app=chirpstack -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 
 if [ -z "$POD" ]; then
     echo -e "${RED}Error: ChirpStack pod not found${NC}"
-    echo "Make sure ChirpStack is deployed and running:"
+    echo "ChirpStack pod is not running in the chirpstack namespace."
+    echo ""
+    echo "Check deployment status:"
     echo "  kubectl get pods -n chirpstack"
+    echo "  kubectl get deployment -n chirpstack"
+    echo ""
+    echo "If ChirpStack is still deploying, wait for it to be ready and try again."
     exit 1
 fi
 
