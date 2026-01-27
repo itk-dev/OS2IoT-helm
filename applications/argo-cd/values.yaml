@@ -43,7 +43,7 @@ argo-cd:
   global:
     # -- Default domain used by all components
     ## Used for ingresses, certificates, SSO, notifications, etc.
-    domain: argocd.example.com
+    domain: argocd.os2iot.itkdev.dk
 
     # -- Runtime class name for all components
     runtimeClassName: ""
