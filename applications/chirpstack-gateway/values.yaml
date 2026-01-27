@@ -7,5 +7,13 @@ chirpstackGateway:
 
   replicaCount: 1
 
+  resources:
+    limits:
+      cpu: 150m
+      memory: 512Mi
+    requests:
+      cpu: 5m
+      memory: 128Mi
+
   mqtt:
     server: "tcp://mosquitto-svc.mosquitto:1883"

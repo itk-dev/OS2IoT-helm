@@ -48,12 +48,7 @@ spec:
               containerPort: 8080
               protocol: TCP
           resources:
-            limits:
-              cpu: 150m
-              memory: 512Mi
-            requests:
-              cpu: 5m
-              memory: 128Mi
+            {{- toYaml .Values.chirpstack.resources | nindent 12 }}
           volumeMounts:
             - name: persistent-storage
               mountPath: /etc/chirpstack/adr-modules

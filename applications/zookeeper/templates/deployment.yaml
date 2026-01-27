@@ -27,12 +27,7 @@ spec:
               containerPort: 2181
               protocol: TCP
           resources:
-            limits:
-              cpu: 150m
-              memory: 512Mi
-            requests:
-              cpu: 5m
-              memory: 128Mi
+            {{- toYaml .Values.zookeeper.resources | nindent 12 }}
           # Custom bellow: 
           env:
             - name: ALLOW_ANONYMOUS_LOGIN

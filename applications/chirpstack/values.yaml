@@ -11,6 +11,14 @@ chirpstack:
 
   replicaCount: 1
 
+  resources:
+    limits:
+      cpu: 150m
+      memory: 512Mi
+    requests:
+      cpu: 5m
+      memory: 128Mi
+
   extraEnv: []
 
   MQTT:

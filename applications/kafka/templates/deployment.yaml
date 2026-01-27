@@ -30,12 +30,7 @@ spec:
               containerPort: 9093
               protocol: TCP
           resources:
-            limits:
-              cpu: 150m
-              memory: 512Mi
-            requests:
-              cpu: 5m
-              memory: 128Mi
+            {{- toYaml .Values.kafka.resources | nindent 12 }}
           # Custom bellow: 
           env:
             - name: KAFKA_BROKER_ID

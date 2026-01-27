@@ -29,12 +29,7 @@ spec:
               containerPort: 1700
               protocol: UDP
           resources:
-            limits:
-              cpu: 150m
-              memory: 512Mi
-            requests:
-              cpu: 5m
-              memory: 128Mi
+            {{- toYaml .Values.chirpstackGateway.resources | nindent 12 }}
           volumeMounts:
             - name: {{ $.Chart.Name }}-configmap
               mountPath: /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml

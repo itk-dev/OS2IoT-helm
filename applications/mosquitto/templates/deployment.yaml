@@ -28,12 +28,7 @@ spec:
               containerPort: 1883
               protocol: TCP
           resources:
-            limits:
-              cpu: 150m
-              memory: 512Mi
-            requests:
-              cpu: 5m
-              memory: 128Mi
+            {{- toYaml .Values.mosquitto.resources | nindent 12 }}
           volumeMounts:
             - name: {{ $.Chart.Name }}-configmap
               mountPath: /mosquitto/config/mosquitto.conf
