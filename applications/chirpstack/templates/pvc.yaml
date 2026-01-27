@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: persist-claim-chirpstack
 spec:
+  storageClassName: hcloud-volumes
   accessModes:
     - ReadWriteOnce
   resources:

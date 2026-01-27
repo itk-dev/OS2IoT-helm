@@ -5,6 +5,10 @@ kind: Application
 metadata:
   name: {{ .name }}
   namespace: argo-cd
+  {{- if .syncWave }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .syncWave }}"
+  {{- end }}
 spec:
   project: {{ .project }}
   source:
@@ -25,6 +29,12 @@ spec:
     {{- if .automated }}
     automated: {}
     {{- end }}
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        maxDuration: 5m
+        factor: 2
     syncOptions:
       - CreateNamespace=true
     {{- range .syncOptions }}

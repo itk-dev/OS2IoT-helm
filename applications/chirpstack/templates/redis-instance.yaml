@@ -21,6 +21,7 @@ spec:
   storage:
     volumeClaimTemplate:
       spec:
+        storageClassName: hcloud-volumes
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:

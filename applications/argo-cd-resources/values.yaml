@@ -1,43 +1,50 @@
 repoUrl: https://github.com/itk-dev/OS2Iot-helm.git
 
 apps:
-  # Basic setup
+  # Wave 0: Cluster Resources (CSI driver must be first)
+  - name: cluster-resources
+    project: cluster-resources
+    namespace: kube-system
+    automated: true
+    syncWave: "0"
+
+  # Wave 1: Core Infrastructure
   - name: argo-cd-resources
     project: argo-cd
     namespace: argo-cd
     automated: true
+    syncWave: "1"
 
   - name: argo-cd
     project: argo-cd
     namespace: argo-cd
     automated: true
+    syncWave: "1"
 
   - name: traefik
     project: traefik
     namespace: traefik
     automated: true
+    syncWave: "1"
 
   - name: cert-manager
     project: cert-manager
     namespace: cert-manager
     automated: true
+    syncWave: "1"
 
   - name: sealed-secrets
     project: sealed-secrets
     namespace: sealed-secrets
     automated: true
+    syncWave: "1"
 
-  ## Cluster Resources (CSI drivers, StorageClasses)
-  - name: cluster-resources
-    project: cluster-resources
-    namespace: kube-system
-    automated: true
-
-  ## Storage
+  # Wave 2: Operators (need CRDs ready)
   - name: cloudnative-pg-operator
     project: cloudnative-pg-operator
     namespace: cloudnative-pg-operator
     automated: true
+    syncWave: "2"
     syncOptions:
       - ServerSideApply=true
 
@@ -45,52 +52,65 @@ apps:
     project: redis-operator
     namespace: redis-operator
     automated: true
+    syncWave: "2"
     syncOptions:
       - ServerSideApply=true
 
-  ## Databases
+  # Wave 3: Databases (need operator webhooks ready)
   - name: postgres
     project: postgres
     namespace: postgres
     automated: true
+    syncWave: "3"
 
-  ## Applications
+  # Wave 4: Message brokers and Redis
   - name: mosquitto
     project: mosquitto
     namespace: mosquitto
     automated: true
-
-  - name: mosquitto-broker
-    project: mosquitto-broker
-    namespace: mosquitto-broker
-    automated: true
-
-  - name: chirpstack
-    project: chirpstack
-    namespace: chirpstack
-    automated: true
-
-  - name: chirpstack-gateway
-    project: chirpstack-gateway
-    namespace: chirpstack-gateway
-    automated: true
+    syncWave: "4"
 
   - name: zookeeper
     project: zookeeper
     namespace: zookeeper
     automated: true
+    syncWave: "4"
+
+  # Wave 5: Apps depending on databases/brokers
+  - name: chirpstack
+    project: chirpstack
+    namespace: chirpstack
+    automated: true
+    syncWave: "5"
+
+  - name: chirpstack-gateway
+    project: chirpstack-gateway
+    namespace: chirpstack-gateway
+    automated: true
+    syncWave: "5"
 
   - name: kafka
     project: kafka
     namespace: kafka
     automated: true
+    syncWave: "5"
+
+  # Wave 6: Apps depending on postgres
+  - name: mosquitto-broker
+    project: mosquitto-broker
+    namespace: mosquitto-broker
+    automated: true
+    syncWave: "6"
 
   - name: os2iot-backend
     project: os2iot-backend
     namespace: os2iot-backend
     automated: true
+    syncWave: "6"
 
+  # Wave 7: Frontend (depends on backend)
   - name: os2iot-frontend
     project: os2iot-frontend
     namespace: os2iot-frontend
     automated: true
+    syncWave: "7"
