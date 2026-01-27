@@ -125,6 +125,7 @@ argo-cd:
     # -- Default node selector for all components
     nodeSelector:
       kubernetes.io/os: linux
+      topology.kubernetes.io/region: fsn1
 
     # -- Default tolerations for all components
     tolerations: []

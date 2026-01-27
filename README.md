@@ -183,17 +183,42 @@ lora.your-domain.com   A     <chirpstack-gateway-lb-ip>
 
 ### Limiting to Single LB (Single Region)
 
-By default, Cloudfleet creates LBs in every region where nodes exist. To consolidate to a single LB:
+By default, Cloudfleet creates LBs in every region where nodes exist. To consolidate to a single LB, all applications are pre-configured to run in **fsn1** region.
 
-**Option 1: Restrict pods to one region** (configured by default)
+**Default configuration (fsn1):**
 
-Traefik and ChirpStack Gateway are configured with nodeSelector to run only in fsn1:
+All application deployments include a configurable `nodeSelector` in their `values.yaml`:
+
 ```yaml
-nodeSelector:
-  topology.kubernetes.io/region: fsn1
+# Example: applications/kafka/values.yaml
+kafka:
+  nodeSelector:
+    topology.kubernetes.io/region: fsn1
 ```
 
-**Option 2: Migrate all nodes to one region**
+**All applications are configured for fsn1:**
+
+| Category | Applications |
+|----------|-------------|
+| Custom apps | traefik, chirpstack, chirpstack-gateway, mosquitto, mosquitto-broker, kafka, zookeeper, os2iot-backend, os2iot-frontend |
+| Third-party | argo-cd, cert-manager, sealed-secrets, cloudnative-pg-operator, redis-operator |
+
+**To change region**, update the nodeSelector in each application's `values.yaml`:
+
+```yaml
+kafka:
+  nodeSelector:
+    topology.kubernetes.io/region: nbg1  # Change to different region
+```
+
+**To disable region restriction** (allow scheduling on any node):
+
+```yaml
+kafka:
+  nodeSelector: {}
+```
+
+**To migrate existing nodes to a single region:**
 
 ```bash
 # Check current node regions

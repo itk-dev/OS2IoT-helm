@@ -75,7 +75,8 @@ redis-operator:
     apiVersion: "cert-manager.io/v1"
 
   priorityClassName: ""
-  nodeSelector: {}
+  nodeSelector:
+    topology.kubernetes.io/region: fsn1
   tolerateAllTaints: false
   tolerations: []
   affinity: {}

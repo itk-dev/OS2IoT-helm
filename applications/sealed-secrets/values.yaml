@@ -233,7 +233,8 @@ sealed-secrets:
   ## @param nodeSelector [object] Node labels for Sealed Secret pods assignment
   ## ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
-  nodeSelector: {}
+  nodeSelector:
+    topology.kubernetes.io/region: fsn1
   ## @param tolerations [array] Tolerations for Sealed Secret pods assignment
   ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
   ##

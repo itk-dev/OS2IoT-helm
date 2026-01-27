@@ -163,7 +163,8 @@ cloudnative-pg:
       memory: 128Mi
 
   # -- Nodeselector for the operator to be installed.
-  nodeSelector: {}
+  nodeSelector:
+    topology.kubernetes.io/region: fsn1
 
   # -- Topology Spread Constraints for the operator to be installed.
   topologySpreadConstraints: []
