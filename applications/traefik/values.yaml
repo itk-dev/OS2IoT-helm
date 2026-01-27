@@ -979,7 +979,9 @@ traefik:
     single: true
     type: LoadBalancer
     # -- Additional annotations applied to both TCP and UDP services (e.g. for cloud provider specific config)
-    annotations: {}
+    annotations:
+      # Attach to existing Hetzner LB by name (create with: hcloud load-balancer create --name os2iot-ingress --type lb11 --location fsn1)
+      load-balancer.hetzner.cloud/name: "os2iot-ingress"
     # -- Additional annotations for TCP service only
     annotationsTCP: {}
     # -- Additional annotations for UDP service only

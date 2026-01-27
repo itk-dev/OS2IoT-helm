@@ -47,7 +47,7 @@ os2iotBackend:
     superUserPassword: ""
 
   backend:
-    baseUrl: "https://backend.os2iot.dk"
+    baseUrl: "https://backend.os2iot.itkdev.dk"
 
   kombit:
     certificatePrivateKey: ""
@@ -57,7 +57,7 @@ os2iotBackend:
     level: error
 
   email:
-    host: smtp.ethereal.email
+    host: smtp.local
     port: "587"
     from: ""
     secretName: os2iot-backend-email

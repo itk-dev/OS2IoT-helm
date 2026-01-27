@@ -80,6 +80,7 @@ print_header "OS2IoT Helm Bootstrap Script"
 echo "This script will bootstrap OS2IoT on your Kubernetes cluster."
 echo ""
 echo "Bootstrap sequence:"
+echo "  0. (Optional) Pre-create Hetzner Load Balancer"
 echo "  1. Pre-flight checks"
 echo "  2. Install ArgoCD"
 echo "  3. Install Sealed Secrets"
@@ -87,6 +88,70 @@ echo "  4. Generate and seal application secrets"
 echo "  5. Install ArgoCD resources (app-of-apps)"
 echo "  6. Generate ChirpStack API key"
 echo ""
+
+# Optional: Pre-create Hetzner Load Balancer
+if command_exists hcloud; then
+    echo -e "${YELLOW}Hetzner Cloud CLI detected.${NC}"
+    read -p "Would you like to pre-create a Load Balancer for DNS setup? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        print_header "Step 0: Pre-create Hetzner Load Balancer"
+
+        print_step "Available Hetzner contexts:"
+        hcloud context list
+        echo ""
+
+        CURRENT_CONTEXT=$(hcloud context active 2>/dev/null || echo "none")
+        echo -e "Current context: ${BOLD}$CURRENT_CONTEXT${NC}"
+        echo ""
+
+        read -p "Switch to a different context? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            read -p "Enter context name: " HCLOUD_CONTEXT
+            hcloud context use "$HCLOUD_CONTEXT"
+            print_success "Switched to context: $HCLOUD_CONTEXT"
+        fi
+
+        # Check if LB already exists
+        if hcloud load-balancer describe os2iot-ingress >/dev/null 2>&1; then
+            print_warning "Load Balancer 'os2iot-ingress' already exists"
+            LB_IP=$(hcloud load-balancer describe os2iot-ingress -o format='{{.PublicNet.IPv4.IP}}')
+            echo -e "IP Address: ${BOLD}${GREEN}$LB_IP${NC}"
+        else
+            echo ""
+            echo "Available locations: fsn1 (Falkenstein), nbg1 (Nuremberg), hel1 (Helsinki)"
+            read -p "Enter location [fsn1]: " LB_LOCATION
+            LB_LOCATION=${LB_LOCATION:-fsn1}
+
+            read -p "Enter LB name [os2iot-ingress]: " LB_NAME
+            LB_NAME=${LB_NAME:-os2iot-ingress}
+
+            print_step "Creating Load Balancer '$LB_NAME' in $LB_LOCATION..."
+            hcloud load-balancer create --name "$LB_NAME" --type lb11 --location "$LB_LOCATION"
+            print_success "Load Balancer created"
+
+            LB_IP=$(hcloud load-balancer describe "$LB_NAME" -o format='{{.PublicNet.IPv4.IP}}')
+            echo ""
+            echo -e "Load Balancer IP: ${BOLD}${GREEN}$LB_IP${NC}"
+
+            # Update Traefik values if different name
+            if [ "$LB_NAME" != "os2iot-ingress" ]; then
+                print_warning "You used a custom LB name. Update applications/traefik/values.yaml:"
+                echo "  load-balancer.hetzner.cloud/name: \"$LB_NAME\""
+            fi
+        fi
+
+        echo ""
+        echo -e "${YELLOW}Configure your DNS records to point to: ${BOLD}$LB_IP${NC}"
+        echo ""
+        read -p "Press Enter when DNS is configured (or Ctrl+C to abort)..."
+        echo ""
+    fi
+else
+    echo -e "${CYAN}Tip:${NC} Install hcloud CLI to pre-create Hetzner Load Balancer for DNS setup"
+    echo ""
+fi
 
 check_kubectl_context
 

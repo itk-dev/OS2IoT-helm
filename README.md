@@ -75,6 +75,49 @@ If you want to randomly generate keys and password, you can use this command:
 echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
 ```
 
+## Pre-Bootstrap: Load Balancer Setup (Optional)
+
+If you need DNS configured before deploying (e.g., for Let's Encrypt HTTP-01 challenges), you can pre-create the Load Balancer to get its IP address first.
+
+### Hetzner Cloud (Cloudfleet)
+
+```bash
+# List available projects/contexts
+hcloud context list
+
+# Switch to your project (if you have multiple)
+hcloud context use <your-project-name>
+
+# Or create a new context for your project
+hcloud context create <project-name>
+# (You'll be prompted to enter your Hetzner API token)
+
+# Create the load balancer (adjust location: fsn1, nbg1, hel1)
+hcloud load-balancer create --name os2iot-ingress --type lb11 --location fsn1
+
+# Get the public IPv4 address
+hcloud load-balancer describe os2iot-ingress -o format='{{.PublicNet.IPv4.IP}}'
+```
+
+Configure your DNS records to point to this IP, then proceed with the bootstrap. The Traefik chart is pre-configured with the annotation `load-balancer.hetzner.cloud/name: "os2iot-ingress"` to use this existing Load Balancer.
+
+If you use a different LB name, update `applications/traefik/values.yaml`:
+
+```yaml
+traefik:
+  service:
+    annotations:
+      load-balancer.hetzner.cloud/name: "your-lb-name"
+```
+
+### Other Cloud Providers
+
+For other providers, either:
+1. Deploy Traefik first to get a LoadBalancer IP, configure DNS, then deploy the rest
+2. Consult your cloud provider's documentation for reserving static IPs
+
+---
+
 ## Bootstrap continuous deployment
 
 The first step is
