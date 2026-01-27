@@ -39,7 +39,7 @@ cloudnative-pg:
 
     storage:
       size: 8Gi
-      storageClass: ""
+      storageClass: "hcloud-volumes"
 
     walStorage:
       enabled: false

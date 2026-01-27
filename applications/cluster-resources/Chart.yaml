@@ -1,0 +1,12 @@
+apiVersion: v2
+name: cluster-resources
+description: Cluster-wide resources including CSI drivers and storage classes
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: hcloud-csi
+    version: "2.10.1"
+    repository: "https://charts.hetzner.cloud"
+    condition: hcloud-csi.enabled

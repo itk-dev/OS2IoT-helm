@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cluster-resources
+  namespace: argo-cd
+spec:
+  destinations:
+  - name: in-cluster
+    namespace: kube-system
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: 'storage.k8s.io'
+    kind: StorageClass
+  - group: 'storage.k8s.io'
+    kind: CSIDriver
+  - group: 'rbac.authorization.k8s.io'
+    kind: ClusterRole
+  - group: 'rbac.authorization.k8s.io'
+    kind: ClusterRoleBinding
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  sourceRepos:
+  - {{ .Values.repoUrl }}

@@ -27,6 +27,12 @@ apps:
     namespace: sealed-secrets
     automated: true
 
+  ## Cluster Resources (CSI drivers, StorageClasses)
+  - name: cluster-resources
+    project: cluster-resources
+    namespace: kube-system
+    automated: true
+
   ## Storage
   - name: cloudnative-pg-operator
     project: cloudnative-pg-operator
