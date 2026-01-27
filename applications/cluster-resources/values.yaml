@@ -1,3 +1,14 @@
+hcloud-cloud-controller-manager:
+  enabled: true
+  secret:
+    create: false
+    name: hcloud
+    key: token
+  networking:
+    enabled: false  # Using Cloudfleet networking
+  nodeSelector:
+    cfke.io/provider: hetzner
+
 hcloud-csi:
   enabled: true
 

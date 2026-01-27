@@ -10,3 +10,7 @@ dependencies:
     version: "2.10.1"
     repository: "https://charts.hetzner.cloud"
     condition: hcloud-csi.enabled
+  - name: hcloud-cloud-controller-manager
+    version: "1.21.0"
+    repository: "https://charts.hetzner.cloud"
+    condition: hcloud-cloud-controller-manager.enabled
