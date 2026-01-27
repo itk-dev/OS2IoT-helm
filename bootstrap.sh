@@ -303,6 +303,7 @@ if [ "$INSTALL_SEALED_SECRETS" = true ]; then
     print_success "Dependencies built"
 
     print_step "Installing Sealed Secrets..."
+    kubectl create namespace sealed-secrets >/dev/null 2>&1 || true
     helm template sealed-secrets applications/sealed-secrets -n sealed-secrets | kubectl apply -f - >/dev/null
     print_success "Sealed Secrets installed"
 

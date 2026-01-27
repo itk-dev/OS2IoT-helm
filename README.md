@@ -36,6 +36,11 @@ domain and setup. This document will guide you through the process of setting up
 ./bootstrap-os2iot-org.sh
 ```
 
+**Uninstall OS2IoT (full cleanup):**
+```bash
+./uninstall.sh
+```
+
 **Access ArgoCD UI:**
 ```bash
 kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8443:443
@@ -209,6 +214,8 @@ Before installing argo-cd-resources, install sealed-secrets to enable secret enc
 argo-cd-resources to avoid a chicken-and-egg problem where applications try to deploy SealedSecret resources before
 the controller exists.
 
+> **Note:** Sealed Secrets is deployed to its own `sealed-secrets` namespace (not `kube-system`). This is required for managed Kubernetes clusters (like CFKE) that restrict access to `kube-system`.
+
 Install sealed-secrets:
 
 ```shell
@@ -216,19 +223,20 @@ cd applications/sealed-secrets
 helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
 helm repo update
 helm dependency build
-helm template sealed-secrets . -n kube-system | kubectl apply -f -
+kubectl create namespace sealed-secrets
+helm template sealed-secrets . -n sealed-secrets | kubectl apply -f -
 ```
 
 Wait for the controller to be ready:
 
 ```shell
-kubectl wait --for=condition=available --timeout=300s deployment/sealed-secrets -n kube-system
+kubectl wait --for=condition=available --timeout=300s deployment/sealed-secrets -n sealed-secrets
 ```
 
 You can verify it's running:
 
 ```shell
-kubectl get deployment sealed-secrets -n kube-system
+kubectl get deployment sealed-secrets -n sealed-secrets
 ```
 
 Now generate and seal all application secrets:
@@ -396,14 +404,32 @@ echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
 cd applications/postgres
 
 # Seal secrets for postgres namespace (CloudNativePG roles)
-kubeseal --format yaml < local-secrets/chirpstack-user-secret.yaml > templates/chirpstack-user-sealed-secret.yaml
-kubeseal --format yaml < local-secrets/os2iot-user-secret.yaml > templates/os2iot-user-sealed-secret.yaml
-kubeseal --format yaml < local-secrets/mqtt-user-secret.yaml > templates/mqtt-user-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/chirpstack-user-secret.yaml > templates/chirpstack-user-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/os2iot-user-secret.yaml > templates/os2iot-user-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/mqtt-user-secret.yaml > templates/mqtt-user-sealed-secret.yaml
 
 # Seal secrets for application namespaces (deployment access)
-kubeseal --format yaml < local-secrets/chirpstack-user-secret-for-chirpstack-ns.yaml > ../chirpstack/templates/postgres-cluster-chirpstack-sealed-secret.yaml
-kubeseal --format yaml < local-secrets/os2iot-user-secret-for-backend-ns.yaml > ../os2iot-backend/templates/postgres-cluster-os2iot-sealed-secret.yaml
-kubeseal --format yaml < local-secrets/mqtt-user-secret-for-broker-ns.yaml > ../mosquitto-broker/templates/postgres-cluster-mqtt-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/chirpstack-user-secret-for-chirpstack-ns.yaml > ../chirpstack/templates/postgres-cluster-chirpstack-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/os2iot-user-secret-for-backend-ns.yaml > ../os2iot-backend/templates/postgres-cluster-os2iot-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/mqtt-user-secret-for-broker-ns.yaml > ../mosquitto-broker/templates/postgres-cluster-mqtt-sealed-secret.yaml
 ```
 
 #### 4. Commit the sealed secrets
@@ -471,7 +497,10 @@ stringData:
 
 ```bash
 cd applications/os2iot-backend
-kubeseal --format yaml < local-secrets/ca-keys.yaml > templates/ca-keys-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/ca-keys.yaml > templates/ca-keys-sealed-secret.yaml
 ```
 
 ### Encryption Key Setup
@@ -504,7 +533,10 @@ stringData:
 
 ```bash
 cd applications/os2iot-backend
-kubeseal --format yaml < local-secrets/encryption-secret.yaml > templates/encryption-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/encryption-secret.yaml > templates/encryption-sealed-secret.yaml
 ```
 
 ### Email Credentials Setup
@@ -531,7 +563,10 @@ stringData:
 
 ```bash
 cd applications/os2iot-backend
-kubeseal --format yaml < local-secrets/email-secret.yaml > templates/email-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/email-secret.yaml > templates/email-sealed-secret.yaml
 ```
 
 #### 3. Configure SMTP host and port
@@ -874,8 +909,14 @@ stringData:
 3. Seal the secrets:
 
 ```bash
-kubeseal --format yaml < applications/mosquitto-broker/local-secrets/ca-keys.yaml > applications/mosquitto-broker/templates/ca-keys-sealed-secret.yaml
-kubeseal --format yaml < applications/mosquitto-broker/local-secrets/server-keys.yaml > applications/mosquitto-broker/templates/server-keys-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < applications/mosquitto-broker/local-secrets/ca-keys.yaml > applications/mosquitto-broker/templates/ca-keys-sealed-secret.yaml
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < applications/mosquitto-broker/local-secrets/server-keys.yaml > applications/mosquitto-broker/templates/server-keys-sealed-secret.yaml
 ```
 
 4. Commit only the sealed secrets - the `local-secrets/` directory is gitignored.
