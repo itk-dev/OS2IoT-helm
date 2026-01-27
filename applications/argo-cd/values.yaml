@@ -867,13 +867,13 @@ argo-cd:
     podLabels: {}
 
     # -- Resource limits and requests for the application controller pods
-    resources: {}
-    #  limits:
-    #    cpu: 500m
-    #    memory: 512Mi
-    #  requests:
-    #    cpu: 250m
-    #    memory: 256Mi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
 
     # Application controller container ports
     containerPorts:
@@ -1559,13 +1559,13 @@ argo-cd:
     podLabels: {}
 
     # -- Resource limits and requests for redis
-    resources: {}
-    #  limits:
-    #    cpu: 200m
-    #    memory: 128Mi
-    #  requests:
-    #    cpu: 100m
-    #    memory: 64Mi
+    resources:
+      limits:
+        cpu: 200m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 64Mi
 
     # -- Redis pod-level security context
     # @default -- See [values.yaml]
@@ -2110,13 +2110,13 @@ argo-cd:
     podLabels: {}
 
     # -- Resource limits and requests for the Argo CD server
-    resources: {}
-    #  limits:
-    #    cpu: 100m
-    #    memory: 128Mi
-    #  requests:
-    #    cpu: 50m
-    #    memory: 64Mi
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
 
     # Server container ports
     containerPorts:
@@ -2882,13 +2882,13 @@ argo-cd:
     podLabels: {}
 
     # -- Resource limits and requests for the repo server pods
-    resources: {}
-    #  limits:
-    #    cpu: 50m
-    #    memory: 128Mi
-    #  requests:
-    #    cpu: 10m
-    #    memory: 64Mi
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
 
     # Repo server container ports
     containerPorts:
@@ -3263,13 +3263,13 @@ argo-cd:
     podLabels: {}
 
     # -- Resource limits and requests for the ApplicationSet controller pods.
-    resources: {}
-      # limits:
-      #   cpu: 100m
-      #   memory: 128Mi
-      # requests:
-      #   cpu: 100m
-      #   memory: 128Mi
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
 
     # ApplicationSet controller container ports
     containerPorts:
