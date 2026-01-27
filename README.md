@@ -64,6 +64,74 @@ kubectl port-forward -n os2iot-frontend svc/os2iot-frontend-svc 8081:8081
 # Login: global-admin@os2iot.dk / hunter2
 ```
 
+## Hetzner Cloud / Cloudfleet Requirements
+
+This deployment is designed for Kubernetes clusters running on **Hetzner Cloud** via **Cloudfleet.ai**.
+
+### Prerequisites
+
+- **Hetzner API Token**: Required for the CSI driver to provision volumes
+- **Cloudfleet cluster**: Nodes must have the label `cfke.io/provider: hetzner`
+
+### Storage (cluster-resources)
+
+The `cluster-resources` application deploys the Hetzner CSI driver which provides:
+- **StorageClass**: `hcloud-volumes` (default)
+- **Volume binding**: `WaitForFirstConsumer`
+- **Reclaim policy**: `Retain`
+
+**Important limitations:**
+- Hetzner volumes can only attach to Hetzner nodes
+- `ReadWriteMany` is NOT supported (use `ReadWriteOnce`)
+- Pods using Hetzner volumes must be scheduled on Hetzner nodes
+
+### Setting up the Hetzner API Token
+
+```bash
+# Add the Hetzner Helm repo
+helm repo add hcloud https://charts.hetzner.cloud
+helm repo update
+
+# Build dependencies
+cd applications/cluster-resources
+helm dependency build
+
+# Create the secret in local-secrets/hcloud-token.yaml
+cd applications/cluster-resources
+mkdir -p local-secrets
+cat > local-secrets/hcloud-token.yaml << EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hcloud
+  namespace: kube-system
+type: Opaque
+stringData:
+  token: "YOUR_HETZNER_API_TOKEN"
+EOF
+
+# Seal the secret
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/hcloud-token.yaml > templates/hcloud-token-sealed-secret.yaml
+```
+
+## Application Sync Waves
+
+ArgoCD deploys applications in waves to ensure dependencies are ready before dependent apps start. All apps have automatic retry (5 attempts, 30s-5m exponential backoff).
+
+| Wave | Applications | Purpose |
+|------|--------------|---------|
+| 0 | `cluster-resources` | CSI driver and StorageClasses (must be first) |
+| 1 | `argo-cd`, `argo-cd-resources`, `traefik`, `cert-manager`, `sealed-secrets` | Core infrastructure |
+| 2 | `cloudnative-pg-operator`, `redis-operator` | Operators (CRDs and webhooks) |
+| 3 | `postgres` | Database cluster (needs operator webhook ready) |
+| 4 | `mosquitto`, `zookeeper` | Message brokers |
+| 5 | `chirpstack`, `chirpstack-gateway`, `kafka` | Apps depending on brokers/databases |
+| 6 | `mosquitto-broker`, `os2iot-backend` | Apps depending on postgres |
+| 7 | `os2iot-frontend` | Frontend (depends on backend) |
+
 ## Variables
 
 Throughout this installation documentation, some values are used multiple times. These values are defined in the

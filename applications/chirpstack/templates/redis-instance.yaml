@@ -8,6 +8,8 @@ data:
   redis.conf: |
     maxmemory 128mb
     maxmemory-policy allkeys-lru
+    save ""
+    appendonly no
 ---
 apiVersion: redis.redis.opstreelabs.in/v1beta2
 kind: Redis
@@ -18,13 +20,7 @@ spec:
   kubernetesConfig:
     image: quay.io/opstree/redis:v7.0.12
     imagePullPolicy: IfNotPresent
-  storage:
-    volumeClaimTemplate:
-      spec:
-        storageClassName: hcloud-volumes
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 1Gi
+  # No persistent storage - ChirpStack uses Redis for ephemeral data only
+  # (device sessions, deduplication, caching)
   redisConfig:
     additionalRedisConfig: chirpstack-redis-config
