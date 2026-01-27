@@ -9,11 +9,11 @@ chirpstackGateway:
 
   resources:
     limits:
-      cpu: 150m
+      cpu: 500m
       memory: 512Mi
     requests:
-      cpu: 5m
-      memory: 128Mi
+      cpu: 100m
+      memory: 256Mi
 
   mqtt:
     server: "tcp://mosquitto-svc.mosquitto:1883"

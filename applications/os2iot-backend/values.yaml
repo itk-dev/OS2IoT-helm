@@ -12,11 +12,11 @@ os2iotBackend:
 
   resources:
     limits:
-      cpu: 150m
-      memory: 512Mi
+      cpu: 2000m
+      memory: 1Gi
     requests:
-      cpu: 5m
-      memory: 128Mi
+      cpu: 500m
+      memory: 512Mi
 
   database:
     # Shared PostgreSQL cluster service name (cluster-name-rw.namespace)

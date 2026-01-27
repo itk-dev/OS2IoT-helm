@@ -9,11 +9,11 @@ zookeeper:
 
   resources:
     limits:
-      cpu: 150m
-      memory: 512Mi
+      cpu: 1000m
+      memory: 1Gi
     requests:
-      cpu: 5m
-      memory: 128Mi
+      cpu: 500m
+      memory: 512Mi
 
   allow_anonymous_login: "yes"
   clientPort: 2181

@@ -869,11 +869,11 @@ argo-cd:
     # -- Resource limits and requests for the application controller pods
     resources:
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 2000m
+        memory: 2Gi
       requests:
-        cpu: 250m
-        memory: 256Mi
+        cpu: 500m
+        memory: 1Gi
 
     # Application controller container ports
     containerPorts:
@@ -1561,11 +1561,11 @@ argo-cd:
     # -- Resource limits and requests for redis
     resources:
       limits:
-        cpu: 200m
-        memory: 128Mi
+        cpu: 500m
+        memory: 256Mi
       requests:
-        cpu: 100m
-        memory: 64Mi
+        cpu: 250m
+        memory: 128Mi
 
     # -- Redis pod-level security context
     # @default -- See [values.yaml]
@@ -2112,11 +2112,11 @@ argo-cd:
     # -- Resource limits and requests for the Argo CD server
     resources:
       limits:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 500m
+        memory: 256Mi
       requests:
-        cpu: 50m
-        memory: 64Mi
+        cpu: 125m
+        memory: 128Mi
 
     # Server container ports
     containerPorts:
@@ -2884,11 +2884,11 @@ argo-cd:
     # -- Resource limits and requests for the repo server pods
     resources:
       limits:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 1000m
+        memory: 1Gi
       requests:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 250m
+        memory: 512Mi
 
     # Repo server container ports
     containerPorts:
@@ -3265,11 +3265,11 @@ argo-cd:
     # -- Resource limits and requests for the ApplicationSet controller pods.
     resources:
       limits:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 1000m
+        memory: 512Mi
       requests:
-        cpu: 50m
-        memory: 64Mi
+        cpu: 250m
+        memory: 256Mi
 
     # ApplicationSet controller container ports
     containerPorts:

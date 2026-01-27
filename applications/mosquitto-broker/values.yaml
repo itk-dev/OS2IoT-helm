@@ -9,11 +9,11 @@ mosquittoBroker:
 
   resources:
     limits:
-      cpu: 150m
+      cpu: 1000m
       memory: 512Mi
     requests:
-      cpu: 5m
-      memory: 128Mi
+      cpu: 200m
+      memory: 256Mi
 
   database:
     host: "postgres-cluster-rw.postgres"
