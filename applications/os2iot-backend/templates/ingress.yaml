@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: os2iot-backend-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - {{ .Values.os2iotBackend.ingress.host }}
+    secretName: os2iot-backend-tls
+  rules:
+  - host: {{ .Values.os2iotBackend.ingress.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: os2iot-backend-svc
+            port:
+              number: 3000

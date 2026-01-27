@@ -7,6 +7,9 @@ os2iotBackend:
 
   replicaCount: 1
 
+  ingress:
+    host: backend.os2iot.dk
+
   resources:
     limits:
       cpu: 150m
@@ -44,7 +47,7 @@ os2iotBackend:
     superUserPassword: ""
 
   backend:
-    baseUrl: "https://test-os2iot-backend.os2iot.dk"
+    baseUrl: "https://backend.os2iot.dk"
 
   kombit:
     certificatePrivateKey: ""
