@@ -17,7 +17,7 @@ os2iotFrontend:
   containerPort: 8081
 
   ingress:
-    host: frontend.os2iot.dk
+    host: frontend.os2iot.itkdev.dk
 
   resources:
     limits:

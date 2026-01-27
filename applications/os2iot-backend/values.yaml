@@ -12,7 +12,7 @@ os2iotBackend:
     topology.kubernetes.io/region: fsn1
 
   ingress:
-    host: backend.os2iot.dk
+    host: backend.os2iot.itkdev.dk
 
   resources:
     limits:
