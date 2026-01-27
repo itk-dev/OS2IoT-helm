@@ -4,9 +4,7 @@ metadata:
   name: {{ $.Chart.Name }}-svc
   labels:
     app: {{ $.Chart.Name }}
-  annotations:
-    load-balancer.hetzner.cloud/name: "os2iot-ingress"
-    load-balancer.hetzner.cloud/location: "fsn1"
+  # Cloudfleet auto-provisions LBs
 spec:
   type: LoadBalancer
   ports:
