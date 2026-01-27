@@ -18,6 +18,10 @@ spec:
         app: {{ $.Chart.Name }}
         version: "{{ $.Chart.Name }}-{{ .Values.zookeeper.image.tag }}"
     spec:
+      {{- with .Values.zookeeper.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ $.Chart.Name }}
           image: "{{ .Values.zookeeper.image.registry }}/{{ .Values.zookeeper.image.repository }}:{{ .Values.zookeeper.image.tag }}"

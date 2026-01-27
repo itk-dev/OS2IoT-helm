@@ -18,6 +18,10 @@ spec:
         app: {{ $.Chart.Name }}
         version: "{{ $.Chart.Name }}-{{ .Values.mosquittoBroker.image.tag }}"
     spec:
+      {{- with .Values.mosquittoBroker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         - name: config-substitution
           image: bhgedigital/envsubst:latest

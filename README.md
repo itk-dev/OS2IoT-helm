@@ -148,46 +148,69 @@ If you want to randomly generate keys and password, you can use this command:
 echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
 ```
 
-## Pre-Bootstrap: Load Balancer Setup (Optional)
+## Load Balancer Configuration (Cloudfleet Auto-Provisioning)
 
-If you need DNS configured before deploying (e.g., for Let's Encrypt HTTP-01 challenges), you can pre-create the Load Balancer to get its IP address first.
+Cloudfleet automatically provisions Hetzner Load Balancers for `LoadBalancer` type services. **Do not use Hetzner CCM** - it conflicts with Cloudfleet's controller.
 
-### Hetzner Cloud (Cloudfleet)
+### How It Works
+
+- Cloudfleet creates one LB per region where nodes exist
+- LB IPs are assigned automatically when services are created
+- The annotation `cfke.io/deployed-load-balancers` tracks provisioned LBs
+
+### Getting LB IPs for DNS
+
+After deploying Traefik and ChirpStack Gateway, get the assigned IPs:
 
 ```bash
-# List available projects/contexts
-hcloud context list
-
-# Switch to your project (if you have multiple)
-hcloud context use <your-project-name>
-
-# Or create a new context for your project
-hcloud context create <project-name>
-# (You'll be prompted to enter your Hetzner API token)
-
-# Create the load balancer (adjust location: fsn1, nbg1, hel1)
-hcloud load-balancer create --name os2iot-ingress --type lb11 --location fsn1
-
-# Get the public IPv4 address
-hcloud load-balancer describe os2iot-ingress -o format='{{.PublicNet.IPv4.IP}}'
+kubectl get svc -A | grep LoadBalancer
 ```
 
-Configure your DNS records to point to this IP, then proceed with the bootstrap. The Traefik chart is pre-configured with the annotation `load-balancer.hetzner.cloud/name: "os2iot-ingress"` to use this existing Load Balancer.
+Example output:
+```
+traefik                   traefik                    LoadBalancer   10.x.x.x   91.98.0.195,128.140.31.98   80:30080/TCP,443:30443/TCP
+chirpstack-gateway        chirpstack-gateway-svc     LoadBalancer   10.x.x.x   142.132.247.185             1700:31501/UDP
+```
 
-If you use a different LB name, update `applications/traefik/values.yaml`:
+### DNS Configuration
 
+Configure DNS A records pointing to the Traefik LB IPs:
+```
+your-domain.com        A     <traefik-lb-ip>
+*.your-domain.com      A     <traefik-lb-ip>
+lora.your-domain.com   A     <chirpstack-gateway-lb-ip>
+```
+
+### Limiting to Single LB (Single Region)
+
+By default, Cloudfleet creates LBs in every region where nodes exist. To consolidate to a single LB:
+
+**Option 1: Restrict pods to one region** (configured by default)
+
+Traefik and ChirpStack Gateway are configured with nodeSelector to run only in fsn1:
 ```yaml
-traefik:
-  service:
-    annotations:
-      load-balancer.hetzner.cloud/name: "your-lb-name"
+nodeSelector:
+  topology.kubernetes.io/region: fsn1
+```
+
+**Option 2: Migrate all nodes to one region**
+
+```bash
+# Check current node regions
+kubectl get nodes -L topology.kubernetes.io/region
+
+# Drain and remove nodes from other regions
+kubectl cordon <node-name>
+kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+kubectl delete node <node-name>
 ```
 
 ### Other Cloud Providers
 
-For other providers, either:
-1. Deploy Traefik first to get a LoadBalancer IP, configure DNS, then deploy the rest
-2. Consult your cloud provider's documentation for reserving static IPs
+For non-Cloudfleet deployments:
+1. Deploy Traefik first to get a LoadBalancer IP
+2. Configure DNS with the assigned IP
+3. Consult your cloud provider's documentation for static IP reservation
 
 ---
 

@@ -18,6 +18,10 @@ spec:
         app: {{ $.Chart.Name }}
         version: "{{ $.Chart.Name }}-{{ .Values.os2iotBackend.image.tag }}"
     spec:
+      {{- with .Values.os2iotBackend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       restartPolicy: Always
       containers:
         - name: {{ $.Chart.Name }}

@@ -7,6 +7,10 @@ os2iotFrontend:
 
   replicaCount: 1
 
+  # Node selector for pod scheduling (e.g., restrict to specific region)
+  nodeSelector:
+    topology.kubernetes.io/region: fsn1
+
   service:
     port: 8081
 

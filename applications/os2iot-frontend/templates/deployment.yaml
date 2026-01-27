@@ -18,6 +18,10 @@ spec:
         app: {{ $.Chart.Name }}
         version: "{{ $.Chart.Name }}-{{ .Values.os2iotFrontend.image.tag }}"
     spec:
+      {{- with .Values.os2iotFrontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ $.Chart.Name }}
           image: "{{ .Values.os2iotFrontend.image.registry }}/{{ .Values.os2iotFrontend.image.repository }}:{{ .Values.os2iotFrontend.image.tag }}"

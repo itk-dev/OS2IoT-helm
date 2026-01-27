@@ -18,6 +18,10 @@ spec:
         app: {{ $.Chart.Name }}
         version: "{{ $.Chart.Name }}-{{ .Values.kafka.image.tag }}"
     spec:
+      {{- with .Values.kafka.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ $.Chart.Name }}
           image: "{{ .Values.kafka.image.registry }}/{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag }}"

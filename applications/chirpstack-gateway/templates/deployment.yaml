@@ -20,9 +20,10 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
     spec:
-      # Restrict to fsn1 to ensure Cloudfleet creates only one LB
+      {{- with .Values.chirpstackGateway.nodeSelector }}
       nodeSelector:
-        topology.kubernetes.io/region: fsn1
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ $.Chart.Name }}
           image: "{{ .Values.chirpstackGateway.image.registry }}/{{ .Values.chirpstackGateway.image.repository }}:{{ .Values.chirpstackGateway.image.tag }}"
