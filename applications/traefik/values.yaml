@@ -1110,7 +1110,9 @@ traefik:
   #        topologyKey: kubernetes.io/hostname
 
   # -- nodeSelector is the simplest recommended form of node selection constraint.
-  nodeSelector: {}
+  # Restrict to fsn1 to ensure Cloudfleet creates only one LB
+  nodeSelector:
+    topology.kubernetes.io/region: fsn1
   # -- Tolerations allow the scheduler to schedule pods with matching taints.
   tolerations: []
   # -- You can use topology spread constraints to control
