@@ -277,7 +277,7 @@ fi
 # Install Sealed Secrets
 print_header "Step 3: Install Sealed Secrets"
 
-if kubectl get deployment sealed-secrets -n kube-system >/dev/null 2>&1; then
+if kubectl get deployment sealed-secrets -n sealed-secrets >/dev/null 2>&1; then
     print_warning "Sealed Secrets already installed"
     read -p "Skip Sealed Secrets installation? (Y/n): " -n 1 -r
     echo
@@ -303,24 +303,24 @@ if [ "$INSTALL_SEALED_SECRETS" = true ]; then
     print_success "Dependencies built"
 
     print_step "Installing Sealed Secrets..."
-    helm template sealed-secrets applications/sealed-secrets -n kube-system | kubectl apply -f - >/dev/null
+    helm template sealed-secrets applications/sealed-secrets -n sealed-secrets | kubectl apply -f - >/dev/null
     print_success "Sealed Secrets installed"
 
     print_step "Waiting for Sealed Secrets controller to be ready..."
-    kubectl wait --for=condition=available --timeout=300s deployment/sealed-secrets -n kube-system
+    kubectl wait --for=condition=available --timeout=300s deployment/sealed-secrets -n sealed-secrets
 
     # Also wait for the pod to be ready (deployment can be available but pod not fully ready)
-    kubectl wait --for=condition=ready --timeout=60s pod -l app.kubernetes.io/name=sealed-secrets -n kube-system
+    kubectl wait --for=condition=ready --timeout=60s pod -l app.kubernetes.io/name=sealed-secrets -n sealed-secrets
 
     # Give it a few more seconds for the controller API to be fully ready
     sleep 5
 
     # Test kubeseal connectivity
     print_step "Testing kubeseal connectivity..."
-    if kubectl get service sealed-secrets -n kube-system >/dev/null 2>&1; then
+    if kubectl get service sealed-secrets -n sealed-secrets >/dev/null 2>&1; then
         print_success "Sealed Secrets service is accessible"
     else
-        print_error "Cannot access sealed-secrets service in kube-system namespace"
+        print_error "Cannot access sealed-secrets service in sealed-secrets namespace"
         echo "This is unexpected - the deployment is ready but the service is not found."
         exit 1
     fi
@@ -444,7 +444,7 @@ if [[ ! $REPLY =~ ^[Nn]$ ]]; then
 
         print_step "Sealing the ChirpStack API key..."
         cd applications/os2iot-backend
-        if kubeseal --format yaml --controller-name=sealed-secrets --controller-namespace=kube-system \
+        if kubeseal --format yaml --controller-name=sealed-secrets --controller-namespace=sealed-secrets \
             < local-secrets/chirpstack-api-key.yaml \
             > templates/chirpstack-api-key-sealed-secret.yaml 2>/dev/null; then
             cd ../..

@@ -22,8 +22,8 @@ if ! command -v kubeseal &> /dev/null; then
 fi
 
 # Check if sealed-secrets controller is running
-if ! kubectl get deployment -n kube-system sealed-secrets &> /dev/null; then
-    echo -e "${YELLOW}Warning: sealed-secrets controller not found in kube-system namespace${NC}"
+if ! kubectl get deployment -n sealed-secrets sealed-secrets &> /dev/null; then
+    echo -e "${YELLOW}Warning: sealed-secrets controller not found in sealed-secrets namespace${NC}"
     echo "Make sure sealed-secrets is deployed before sealing secrets"
     read -p "Continue anyway? (y/N) " -n 1 -r
     echo
@@ -62,7 +62,7 @@ seal_secret() {
     echo -n "Sealing: $description... "
 
     ERROR_OUTPUT=$(mktemp)
-    if kubeseal --format yaml --controller-name=sealed-secrets --controller-namespace=kube-system < "$input_file" > "$output_file" 2>"$ERROR_OUTPUT"; then
+    if kubeseal --format yaml --controller-name=sealed-secrets --controller-namespace=sealed-secrets < "$input_file" > "$output_file" 2>"$ERROR_OUTPUT"; then
         echo -e "${GREEN}✓${NC}"
         SUCCESS=$((SUCCESS + 1))
     else
