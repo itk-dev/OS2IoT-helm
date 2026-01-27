@@ -154,16 +154,13 @@ cloudnative-pg:
     # -- Sets the families that should be supported and the order in which they should be applied to ClusterIP as well. Can be IPv4 and/or IPv6.
     ipFamilies: []
 
-  resources: {}
-    # If you want to specify resources, uncomment the following
-    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-    #
-    # limits:
-    #   cpu: 100m
-    #   memory: 200Mi
-    # requests:
-    #   cpu: 100m
-    #   memory: 100Mi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
   # -- Nodeselector for the operator to be installed.
   nodeSelector: {}

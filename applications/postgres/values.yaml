@@ -27,6 +27,16 @@ cloudnative-pg:
     # -- Image pull policy
     imagePullPolicy: IfNotPresent
 
+    # -- Resource limits and requests for PostgreSQL pods
+    # Using same values for requests/limits ensures Guaranteed QoS
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
     storage:
       size: 8Gi
       storageClass: ""
