@@ -6,6 +6,7 @@ metadata:
     app: {{ $.Chart.Name }}
   annotations:
     load-balancer.hetzner.cloud/name: "os2iot-ingress"
+    load-balancer.hetzner.cloud/location: "fsn1"
 spec:
   type: LoadBalancer
   ports:

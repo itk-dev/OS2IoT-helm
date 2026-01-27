@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(helm template:*)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false
+  }
+}

@@ -982,6 +982,7 @@ traefik:
     annotations:
       # Attach to existing Hetzner LB by name (create with: hcloud load-balancer create --name os2iot-ingress --type lb11 --location fsn1)
       load-balancer.hetzner.cloud/name: "os2iot-ingress"
+      load-balancer.hetzner.cloud/location: "fsn1"
     # -- Additional annotations for TCP service only
     annotationsTCP: {}
     # -- Additional annotations for UDP service only
