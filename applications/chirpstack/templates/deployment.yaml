@@ -41,6 +41,11 @@ spec:
                 secretKeyRef:
                   name: postgres-cluster-chirpstack
                   key: password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: chirpstack-jwt-secret
+                  key: jwt_secret
           {{- with .Values.chirpstack.extraEnv }}
             {{- toYaml . | nindent 12 }}
           {{- end }}

@@ -41,7 +41,3 @@ chirpstack:
 
   api:
     bind: "0.0.0.0:8080"
-    jwt_secret: "change-me-in-production"
-
-  createApiKeyJob:
-    enabled: true  # Set to false to skip automatic API key generation
