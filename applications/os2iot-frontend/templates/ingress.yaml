@@ -1,23 +1,36 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: os2iot-frontend-tls
+spec:
+  secretName: os2iot-frontend-tls
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.os2iotFrontend.ingress.host }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
 metadata:
   name: os2iot-frontend-ingress
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt
 spec:
-  ingressClassName: traefik
+  entryPoints:
+    - websecure
+  routes:
+    # API route - proxy to backend service (cross-namespace)
+    - match: Host(`{{ .Values.os2iotFrontend.ingress.host }}`) && PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: os2iot-backend-svc
+          namespace: os2iot-backend
+          port: 3000
+    # Frontend route - serve static files
+    - match: Host(`{{ .Values.os2iotFrontend.ingress.host }}`)
+      kind: Rule
+      services:
+        - name: os2iot-frontend-svc
+          port: {{ .Values.os2iotFrontend.service.port }}
   tls:
-  - hosts:
-    - {{ .Values.os2iotFrontend.ingress.host }}
     secretName: os2iot-frontend-tls
-  rules:
-  - host: {{ .Values.os2iotFrontend.ingress.host }}
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: os2iot-frontend-svc
-            port:
-              number: {{ .Values.os2iotFrontend.service.port }}

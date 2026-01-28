@@ -17,7 +17,7 @@ os2iotFrontend:
   containerPort: 8081
 
   ingress:
-    host: frontend.os2iot.itkdev.dk
+    host: os2iot.itkdev.dk
 
   resources:
     limits:
@@ -29,5 +29,5 @@ os2iotFrontend:
 
   config:
     production: "true"
-    baseUrl: "https://backend.os2iot.itkdev.dk/api/v1/"
+    baseUrl: "/api/v1/"
     tablePageSize: "25"

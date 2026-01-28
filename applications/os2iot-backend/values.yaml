@@ -51,7 +51,7 @@ os2iotBackend:
     superUserPassword: ""
 
   backend:
-    baseUrl: "https://backend.os2iot.itkdev.dk"
+    baseUrl: "https://os2iot.itkdev.dk"
 
   kombit:
     certificatePrivateKey: ""
