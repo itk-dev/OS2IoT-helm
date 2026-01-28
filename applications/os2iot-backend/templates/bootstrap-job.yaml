@@ -65,7 +65,7 @@ spec:
 
               if [ -z "$ORG_ID" ]; then
                 # Check if organization already exists
-                if echo "$ORG_RESPONSE" | grep -q "already exists\|duplicate"; then
+                if echo "$ORG_RESPONSE" | grep -qi "already.exists\|ALREADY-EXISTS\|duplicate"; then
                   echo "Organization already exists - skipping"
                 else
                   echo "Error: Failed to create organization"
