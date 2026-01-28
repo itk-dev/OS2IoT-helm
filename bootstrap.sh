@@ -414,23 +414,9 @@ kubectl wait --for=condition=available --timeout=300s deployment/chirpstack -n c
     echo ""
 }
 
-# Check if the Job is enabled
-if kubectl get job chirpstack-create-api-key -n chirpstack >/dev/null 2>&1; then
-    print_step "Waiting for API key generation job to complete..."
-    kubectl wait --for=condition=complete --timeout=120s job/chirpstack-create-api-key -n chirpstack 2>/dev/null || {
-        print_warning "Job not complete yet. Continuing..."
-    }
-fi
-
 echo ""
-echo "You have two options to generate the ChirpStack API key:"
-echo ""
-echo "Option 1 (Recommended): Use the helper script"
+echo "To generate the ChirpStack API key, use the helper script:"
 echo -e "  ${CYAN}./generate-chirpstack-api-key.sh${NC}"
-echo ""
-echo "Option 2: Retrieve from Job logs"
-echo -e "  ${CYAN}kubectl logs job/chirpstack-create-api-key -n chirpstack${NC}"
-echo "  Then manually update applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml"
 echo ""
 
 read -p "Would you like to run the helper script now? (Y/n): " -n 1 -r

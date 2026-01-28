@@ -1,58 +1,188 @@
-To install OS2IoT with this GitOps [template](https://github.com/os2iot/OS2IoT-helm), you need to have a
-Kubernetes cluster with the following installed:
+# OS2IoT Helm Deployment
 
-* Helm 3
+OS2IoT is an open-source IoT device management platform developed by [OS2](https://os2.eu/) (Denmark's public sector
+open-source organization). This repository provides a production-ready Kubernetes deployment using GitOps principles
+with ArgoCD.
 
-This deployment documentation must be followed and executed in the exact order as described below. This is
-due to some services depending on other services being ready before they can be installed.
+This documentation is written for DevOps engineers and system administrators who are comfortable with Kubernetes and
+Helm. Following GitOps principles, all configuration lives in this Git repository - ArgoCD watches for changes and
+automatically syncs them to your cluster.
 
-In particular, `ArgoCD` needs to be installed before `Argo resources`, `sealed secrets` etc.
+## What This Deploys
 
-The application also requires generation of API keys, etc., and that you use sealed secrets to store them before a
-given service can be installed. Some services also require keys/secrets from one service to communicate with another.
+| Component                     | Description                                                     |
+|-------------------------------|-----------------------------------------------------------------|
+| **OS2IoT Platform**           | Web-based IoT device management frontend and API backend        |
+| **ChirpStack**                | LoRaWAN network server for sensor connectivity                  |
+| **Mosquitto**                 | MQTT brokers (internal for ChirpStack, device-facing with auth) |
+| **PostgreSQL**                | Shared database cluster via CloudNativePG                       |
+| **Kafka/Zookeeper**           | Message streaming infrastructure                                |
+| **Traefik**                   | Ingress controller with TLS termination                         |
+| **Supporting Infrastructure** | ArgoCD, cert-manager, sealed-secrets                            |
 
-Also, because all configuration is stored in GitOps as code, you will need to update secrets and URLs to match your
-domain and setup. This document will guide you through the process of setting up OS2IoT.
+## Architecture
 
-## Quick Reference
+```mermaid
+graph TB
+    subgraph "External Traffic"
+        LB[Load Balancer]
+        GW[LoRaWAN Gateways]
+    end
 
-**Bootstrap the cluster (automated):**
+    subgraph "Ingress Layer"
+        TR[Traefik]
+    end
+
+    subgraph "Applications"
+        FE[os2iot-frontend]
+        BE[os2iot-backend]
+        CS[ChirpStack]
+        CGW[ChirpStack Gateway]
+    end
+
+    subgraph "Message Brokers"
+        MQ1[Mosquitto<br/>ChirpStack]
+        MQ2[Mosquitto Broker<br/>Devices]
+        KF[Kafka]
+        ZK[Zookeeper]
+    end
+
+    subgraph "Data Layer"
+        PG[(PostgreSQL)]
+        RD[(Redis)]
+    end
+
+    LB --> TR
+    GW -->|UDP 1700| TR
+    TR --> FE
+    TR --> BE
+    TR --> CS
+    TR -->|UDP| CGW
+    FE --> BE
+    BE --> PG
+    BE --> KF
+    BE --> CS
+    CS --> PG
+    CS --> RD
+    CS --> MQ1
+    CGW --> MQ1
+    MQ2 --> PG
+    KF --> ZK
+```
+
+---
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Cloud Provider Configuration](#cloud-provider-configuration)
+    - [Hetzner Cloud / Cloudfleet (Default)](#hetzner-cloud--cloudfleet-default)
+    - [Alternative Providers](#alternative-providers)
+- [Installation Guide](#installation-guide)
+    - [Automated Bootstrap](#automated-bootstrap)
+    - [Manual Bootstrap](#manual-bootstrap)
+- [Architecture Reference](#architecture-reference)
+- [Configuration Reference](#configuration-reference)
+    - [PostgreSQL Database](#postgresql-database)
+    - [OS2IoT Backend](#os2iot-backend)
+    - [OS2IoT Organization Bootstrap](#os2iot-organization-bootstrap)
+    - [Mosquitto Broker](#mosquitto-broker)
+- [Operations](#operations)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Prerequisites
+
+The deployment relies on a standard Kubernetes toolchain. You'll use `kubectl` to interact with your cluster, `helm` to
+package and deploy applications, and `kubeseal` to encrypt secrets so they can be safely stored in Git. Each tool plays
+a specific role in the GitOps workflow.
+
+### Required Tools
+
+| Tool       | Minimum Version | Purpose                 |
+|------------|-----------------|-------------------------|
+| Kubernetes | 1.26+           | Container orchestration |
+| Helm       | 3.12+           | Chart management        |
+| kubectl    | 1.26+           | Cluster interaction     |
+| kubeseal   | 0.24+           | Secret encryption       |
+| git        | 2.0+            | GitOps workflow         |
+
+### Cluster Requirements
+
+| Resource        | Minimum | Recommended |
+|-----------------|---------|-------------|
+| Nodes           | 3       | 3+ (for HA) |
+| CPU per node    | 4 cores | 8 cores     |
+| Memory per node | 8 GB    | 16 GB       |
+| Storage         | 50 GB   | 100 GB+     |
+
+### Network Requirements
+
+The following ports must be accessible from the internet:
+
+| Port | Protocol | Purpose                       |
+|------|----------|-------------------------------|
+| 80   | TCP      | HTTP (redirects to HTTPS)     |
+| 443  | TCP      | HTTPS                         |
+| 1700 | UDP      | LoRaWAN gateway traffic       |
+| 8884 | TCP      | MQTT with client certificates |
+| 8885 | TCP      | MQTT with username/password   |
+
+### Configuration Variables
+
+Throughout this documentation, placeholders are used:
+
+| Variable      | Description                 | Example             |
+|---------------|-----------------------------|---------------------|
+| `<FQDN>`      | Fully qualified domain name | `iot.example.com`   |
+| `<CERT_MAIL>` | Email for Let's Encrypt     | `admin@example.com` |
+
+Generate secure passwords with:
+
 ```bash
+echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
+```
+
+---
+
+## Quick Start
+
+The bootstrap process installs ArgoCD first, which then takes over and automatically deploys all other applications in
+the correct order. Once complete, ArgoCD continuously monitors this Git repository and applies any changes you commit.
+
+### Automated Bootstrap (Recommended)
+
+```bash
+# Clone and configure
+git clone https://github.com/os2iot/OS2IoT-helm.git
+cd OS2IoT-helm
+
+# Edit configuration
+# 1. Set your domain in applications/argo-cd/values.yaml
+# 2. Set your repo URL in applications/argo-cd-resources/values.yaml
+# 3. Set your email in applications/cert-manager/templates/cluster-issuer.yaml
+
+# Bootstrap everything
 ./bootstrap.sh
 ```
 
-**Generate and seal secrets:**
-```bash
-./seal-secrets.sh
-```
+### Access the Platform
 
-**Generate ChirpStack API key:**
-```bash
-./generate-chirpstack-api-key.sh
-```
+#### ArgoCD UI:
 
-**Bootstrap OS2IoT organization:**
-```bash
-./bootstrap-os2iot-org.sh
-```
-
-**Uninstall OS2IoT (full cleanup):**
-```bash
-./uninstall.sh
-```
-
-**Access ArgoCD UI:**
 ```bash
 kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8443:443
 # Open https://localhost:8443
-```
-
-**Get ArgoCD admin password:**
-```bash
+# Get password:
 kubectl -n argo-cd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 ```
 
-**Access OS2IoT Frontend (requires BOTH port-forwards):**
+#### OS2IoT Frontend (requires BOTH port-forwards):
+
 ```bash
 # Terminal 1: Backend
 kubectl port-forward -n os2iot-backend svc/os2iot-backend-svc 3000:3000
@@ -64,41 +194,53 @@ kubectl port-forward -n os2iot-frontend svc/os2iot-frontend-svc 8081:8081
 # Login: global-admin@os2iot.dk / hunter2
 ```
 
-## Hetzner Cloud / Cloudfleet Requirements
+### Helper Scripts
 
-This deployment is designed for Kubernetes clusters running on **Hetzner Cloud** via **Cloudfleet.ai**.
+| Script                             | Purpose                          |
+|------------------------------------|----------------------------------|
+| `./bootstrap.sh`                   | Full automated cluster bootstrap |
+| `./seal-secrets.sh`                | Generate and seal all secrets    |
+| `./generate-chirpstack-api-key.sh` | Generate ChirpStack API key      |
+| `./bootstrap-os2iot-org.sh`        | Create default organization      |
+| `./uninstall.sh`                   | Full cleanup and removal         |
 
-### Prerequisites
+These scripts automate repetitive tasks and encode best practices. Use them instead of running manual commands where
+possible.
 
-- **Hetzner API Token**: Required for the CSI driver to provision volumes
+---
+
+## Cloud Provider Configuration
+
+Three things vary between cloud providers: how persistent storage is provisioned, how load balancers are created, and
+how nodes are selected for scheduling. This deployment is pre-configured for **Hetzner Cloud via Cloudfleet.ai**, but
+the sections below show how to adapt it for AWS, GCP, Azure, or bare metal environments.
+
+### Hetzner Cloud / Cloudfleet (Default)
+
+#### Hetzner Requirements
+
+- **Hetzner API Token**: Required for CSI driver to provision volumes
 - **Cloudfleet cluster**: Nodes must have the label `cfke.io/provider: hetzner`
 
-### Storage (cluster-resources)
+#### Storage Configuration
 
-The `cluster-resources` application deploys the Hetzner CSI driver which provides:
+The `cluster-resources` application deploys the Hetzner CSI driver:
+
 - **StorageClass**: `hcloud-volumes` (default)
 - **Volume binding**: `WaitForFirstConsumer`
 - **Reclaim policy**: `Retain`
 
-**Important limitations:**
+**Limitations:**
+
 - Hetzner volumes can only attach to Hetzner nodes
 - `ReadWriteMany` is NOT supported (use `ReadWriteOnce`)
-- Pods using Hetzner volumes must be scheduled on Hetzner nodes
 
-### Setting up the Hetzner API Token
+#### Setting up the Hetzner API Token
 
 ```bash
-# Add the Hetzner Helm repo
-helm repo add hcloud https://charts.hetzner.cloud
-helm repo update
-
-# Build dependencies
-cd applications/cluster-resources
-helm dependency build
-
-# Create the secret in local-secrets/hcloud-token.yaml
 cd applications/cluster-resources
 mkdir -p local-secrets
+
 cat > local-secrets/hcloud-token.yaml << EOF
 apiVersion: v1
 kind: Secret
@@ -110,350 +252,351 @@ stringData:
   token: "YOUR_HETZNER_API_TOKEN"
 EOF
 
-# Seal the secret
 kubeseal --format yaml \
   --controller-name=sealed-secrets \
   --controller-namespace=sealed-secrets \
   < local-secrets/hcloud-token.yaml > templates/hcloud-token-sealed-secret.yaml
 ```
 
-## Application Sync Waves
+#### Load Balancer
 
-ArgoCD deploys applications in waves to ensure dependencies are ready before dependent apps start. All apps have automatic retry (5 attempts, 30s-5m exponential backoff).
+Cloudfleet automatically provisions Hetzner Load Balancers. **Do not use Hetzner CCM** - it conflicts with Cloudfleet's
+controller.
 
-| Wave | Applications | Purpose |
-|------|--------------|---------|
-| 0 | `cluster-resources` | CSI driver and StorageClasses (must be first) |
-| 1 | `argo-cd`, `argo-cd-resources`, `traefik`, `cert-manager`, `sealed-secrets` | Core infrastructure |
-| 2 | `cloudnative-pg-operator`, `redis-operator` | Operators (CRDs and webhooks) |
-| 3 | `postgres` | Database cluster (needs operator webhook ready) |
-| 4 | `mosquitto`, `zookeeper` | Message brokers |
-| 5 | `chirpstack`, `chirpstack-gateway`, `kafka` | Apps depending on brokers/databases |
-| 6 | `mosquitto-broker`, `os2iot-backend` | Apps depending on postgres |
-| 7 | `os2iot-frontend` | Frontend (depends on backend) |
-
-## Variables
-
-Throughout this installation documentation, some values are used multiple times. These values are defined in the
-following variables:
-
-* `FQDN`: The fully qualified domain name of the cluster (e.g. aarhus.dk).
-* `CERT_MAIL`: The email address used to request a certificate from Let's Encrypt.
-
-They are used with this notation `<FQDN>` in the configuration snippets.
-
-If you want to randomly generate keys and password, you can use this command:
-
-```shell
-echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
-```
-
-## Load Balancer Configuration (Cloudfleet Auto-Provisioning)
-
-Cloudfleet automatically provisions Hetzner Load Balancers for `LoadBalancer` type services. **Do not use Hetzner CCM** - it conflicts with Cloudfleet's controller.
-
-### How It Works
-
-- Cloudfleet creates one LB per region where nodes exist
-- LB IPs are assigned automatically when services are created
-- The annotation `cfke.io/deployed-load-balancers` tracks provisioned LBs
-
-### Getting LB IP for DNS
-
-All traffic (HTTP, HTTPS, and LoRaWAN UDP) routes through a single Traefik LoadBalancer:
+Get the LoadBalancer IP for DNS:
 
 ```bash
 kubectl get svc traefik -n traefik
 ```
 
-Example output:
-```
-NAME      TYPE           CLUSTER-IP     EXTERNAL-IP       PORT(S)
-traefik   LoadBalancer   10.x.x.x       91.98.0.195       80:30080/TCP,443:30443/TCP,1700:31700/UDP
-```
+#### DNS Configuration
 
-### DNS Configuration
+Configure DNS A records pointing to the Traefik LB IP:
 
-Configure DNS A records pointing to the single Traefik LB IP:
-```
+```text
 your-domain.com        A     <traefik-lb-ip>
 *.your-domain.com      A     <traefik-lb-ip>
 ```
 
-**Note:** LoRaWAN gateways connect to the same IP on UDP port 1700. Traffic is routed via IngressRouteUDP to chirpstack-gateway-svc.
+#### Region Configuration
 
-### Viewing Ingress Resources
-
-This deployment uses two types of ingress resources:
-
-| Type | Used By | Command |
-|------|---------|---------|
-| Kubernetes Ingress | argo-cd, chirpstack | `kubectl get ingress -A` |
-| Traefik IngressRoute | os2iot-frontend | `kubectl get ingressroute -A` |
-
-The frontend uses Traefik's `IngressRoute` CRD instead of standard Kubernetes `Ingress` because it needs to route `/api` requests to the backend service in a different namespace. Standard Ingress doesn't support cross-namespace service routing.
-
-To view all ingress resources:
-```bash
-# Standard Kubernetes Ingress
-kubectl get ingress -A
-
-# Traefik IngressRoute (CRD)
-kubectl get ingressroute -A
-
-# Traefik IngressRouteUDP (for LoRaWAN)
-kubectl get ingressrouteudp -A
-```
-
-### Limiting to Single LB (Single Region)
-
-By default, Cloudfleet creates LBs in every region where nodes exist. To consolidate to a single LB, all applications are pre-configured to run in **fsn1** region.
-
-**Default configuration (fsn1):**
-
-All application deployments include a configurable `nodeSelector` in their `values.yaml`:
+All applications are pre-configured to run in **fsn1** region via nodeSelector. To change:
 
 ```yaml
-# Example: applications/kafka/values.yaml
-kafka:
-  nodeSelector:
-    topology.kubernetes.io/region: fsn1
+# In each application's values.yaml
+nodeSelector:
+  topology.kubernetes.io/region: nbg1  # Change region
+# Or disable region restriction:
+nodeSelector: { }
 ```
 
-**All applications are configured for fsn1:**
+### Alternative Providers
 
-| Category | Applications |
-|----------|-------------|
-| Custom apps | traefik, chirpstack, chirpstack-gateway, mosquitto, mosquitto-broker, kafka, zookeeper, os2iot-backend, os2iot-frontend |
-| Third-party | argo-cd, cert-manager, sealed-secrets, cloudnative-pg-operator, redis-operator |
+For non-Hetzner deployments, you need to configure three components:
 
-**To change region**, update the nodeSelector in each application's `values.yaml`:
+| Component         | Hetzner         | AWS EKS             | GKE                 | AKS                 | Bare Metal       |
+|-------------------|-----------------|---------------------|---------------------|---------------------|------------------|
+| **CSI Driver**    | hcloud-csi      | aws-ebs-csi         | Built-in            | Built-in            | Longhorn/OpenEBS |
+| **StorageClass**  | hcloud-volumes  | gp3                 | pd-standard         | managed-premium     | longhorn         |
+| **Load Balancer** | Cloudfleet auto | AWS LB Controller   | Built-in            | Built-in            | MetalLB          |
+| **Node Selector** | fsn1 region     | Remove or use zones | Remove or use zones | Remove or use zones | Remove           |
 
-```yaml
-kafka:
-  nodeSelector:
-    topology.kubernetes.io/region: nbg1  # Change to different region
-```
+#### AWS EKS
 
-**To disable region restriction** (allow scheduling on any node):
+1. **Disable Hetzner CSI** in `applications/cluster-resources/values.yaml`:
 
-```yaml
-kafka:
-  nodeSelector: {}
-```
+   ```yaml
+   hcloud-csi:
+     enabled: false
+   ```
 
-**To migrate existing nodes to a single region:**
+2. **Install AWS EBS CSI Driver**:
 
-```bash
-# Check current node regions
-kubectl get nodes -L topology.kubernetes.io/region
+   ```bash
+   eksctl create addon --name aws-ebs-csi-driver --cluster <cluster-name>
+   ```
 
-# Drain and remove nodes from other regions
-kubectl cordon <node-name>
-kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
-kubectl delete node <node-name>
-```
+3. **Create StorageClass** and update `applications/postgres/values.yaml`:
 
-### Other Cloud Providers
+   ```yaml
+   cluster:
+     storage:
+       storageClass: "gp3"
+   ```
 
-For non-Cloudfleet deployments:
-1. Deploy Traefik first to get a LoadBalancer IP
-2. Configure DNS with the assigned IP
-3. Consult your cloud provider's documentation for static IP reservation
+4. **Install AWS Load Balancer Controller** and update Traefik:
+
+   ```yaml
+   traefik:
+     service:
+       annotations:
+         service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+   ```
+
+5. **Remove nodeSelectors** from all applications or use availability zones.
+
+See [AWS EBS CSI Driver documentation](https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html) for details.
+
+#### Google Cloud GKE
+
+1. **Disable Hetzner CSI** (same as AWS)
+
+2. **GKE includes CSI driver by default** - create StorageClass if needed:
+
+   ```yaml
+   storageClass: "pd-standard"
+   ```
+
+3. **Update Traefik** for GKE load balancer:
+
+   ```yaml
+   traefik:
+     service:
+       annotations:
+         cloud.google.com/load-balancer-type: "External"
+   ```
+
+4. **Remove nodeSelectors** or use GKE zones.
+
+See [GKE persistent volumes documentation](https://cloud.google.com/kubernetes-engine/docs/concepts/persistent-volumes)
+for details.
+
+#### Azure AKS
+
+1. **Disable Hetzner CSI** (same as AWS)
+
+2. **AKS includes Azure Disk CSI** - use built-in StorageClass:
+
+   ```yaml
+   storageClass: "managed-premium"
+   ```
+
+3. **Configure static IP** if needed:
+
+   ```bash
+   az network public-ip create --name os2iot-ip --resource-group <rg> --allocation-method Static
+   ```
+
+4. **Remove nodeSelectors** or use AKS zones.
+
+See [AKS storage documentation](https://learn.microsoft.com/en-us/azure/aks/concepts-storage) for details.
+
+#### Bare Metal / Self-Managed
+
+1. **Install Longhorn for storage**:
+
+   ```bash
+   helm repo add longhorn https://charts.longhorn.io
+   helm install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace
+   ```
+
+   Update `applications/postgres/values.yaml`:
+
+   ```yaml
+   cluster:
+     storage:
+       storageClass: "longhorn"
+   ```
+
+2. **Install MetalLB for LoadBalancer**:
+
+   ```bash
+   kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
+   ```
+
+   Configure IP pool:
+
+   ```yaml
+   apiVersion: metallb.io/v1beta1
+   kind: IPAddressPool
+   metadata:
+     name: default
+     namespace: metallb-system
+   spec:
+     addresses:
+       - 192.168.1.200-192.168.1.250  # Adjust to your network
+   ---
+   apiVersion: metallb.io/v1beta1
+   kind: L2Advertisement
+   metadata:
+     name: default
+     namespace: metallb-system
+   ```
+
+3. **Remove all nodeSelectors** from application values.yaml files.
+
+See [Longhorn documentation](https://longhorn.io/docs/) and [MetalLB documentation](https://metallb.universe.tf/) for
+details.
 
 ---
 
-## Bootstrap continuous deployment
+## Installation Guide
 
-The first step is
-to [create](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)
-a new GitHub repository based on this [template repository](https://github.com/os2iot/OS2IoT-helm).
+The installation follows a specific sequence: ArgoCD goes first because it manages all other deployments, then Sealed
+Secrets so you can encrypt credentials, then your sealed secrets must be committed to Git so they're available when
+ArgoCD deploys the applications that need them.
 
-### Quick Start (Automated)
+### Automated Bootstrap
 
-For a fully automated bootstrap, use the provided script:
+The `bootstrap.sh` script handles the complete installation:
 
-```shell
+```bash
 ./bootstrap.sh
 ```
 
 The script will:
-1. Verify all prerequisites (kubectl, helm, kubeseal)
+
+1. Verify prerequisites (kubectl, helm, kubeseal)
 2. Install ArgoCD
 3. Install Sealed Secrets
 4. Generate and seal all secrets
 5. Prompt you to commit sealed secrets to Git
 6. Install ArgoCD resources (app-of-apps)
 
-**Prerequisites:**
-- kubectl configured with cluster access
-- helm 3 installed
-- kubeseal CLI installed
-- Repository URL configured in `applications/argo-cd-resources/values.yaml`
+**Before running**, configure:
 
-### Manual Bootstrap Sequence
+- `applications/argo-cd/values.yaml` - Set `global.domain`
+- `applications/argo-cd-resources/values.yaml` - Set `repoUrl`
+- `applications/cert-manager/templates/cluster-issuer.yaml` - Set email
+
+### Manual Bootstrap
 
 If you prefer manual control, follow this exact sequence:
 
-1. **Install ArgoCD** - GitOps controller (manual installation)
-2. **Install Sealed Secrets** - Secret encryption controller (manual installation)
-3. **Generate and seal secrets** - Create and encrypt all application secrets
-4. **Commit sealed secrets** - Push encrypted secrets to Git
-5. **Install Argo resources** - ArgoCD adopts sealed-secrets and auto-syncs all applications
+#### 1. Install ArgoCD
 
-This ensures the sealed-secrets controller is ready before any applications try to use SealedSecret resources.
-
-### ArgoCD
-
-For continuous development and using GitOps to handle updates and configuration
-changes, [ArgoCD](https://argo-cd.readthedocs.io/en/stable/) needs to be bootstrapped into the cluster.
-
-To do so, configure the domain in `applications/argo-cd/values.yaml`:
-
-```yaml
-global:
-  domain: argo.<FQDN>
-```
-
-Then install ArgoCD using the following commands:
-
-```shell
+```bash
 helm repo add argocd https://argoproj.github.io/argo-helm
 helm repo update
+
 cd applications/argo-cd
 helm dependency build
 kubectl create namespace argo-cd
 helm template argo-cd . -n argo-cd | kubectl apply -f -
 ```
 
-Because we are installing the ingress controller with ArgoCD, it is only accessable by using port forwarding at this
-point in the installation:
+Verify ArgoCD is running:
 
-```shell
+```bash
 kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8443:443
+# Open https://localhost:8443
+# Username: admin
+# Password: kubectl -n argo-cd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
-You can ensure that ArgoCD is running by opening the ingress URL:
+#### 2. Install Sealed Secrets
 
-```shell
-open http://127.0.0.1:8443
-```
-
-You can log into the web-based user interface with the username `admin` and get the password with this command:
-
-```shell
-kubectl -n argo-cd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
-```
-
-Optionally, [Authentik](https://goauthentik.io/) can be installed as a single-sign-on (SSO) provider for
-the internal services in the cluster. See the [Authentik](authentik.md) for more information.
-
-### Sealed Secrets (Bootstrap)
-
-Before installing argo-cd-resources, install sealed-secrets to enable secret encryption. This must be done before
-argo-cd-resources to avoid a chicken-and-egg problem where applications try to deploy SealedSecret resources before
-the controller exists.
-
-> **Note:** Sealed Secrets is deployed to its own `sealed-secrets` namespace (not `kube-system`). This is required for managed Kubernetes clusters (like CFKE) that restrict access to `kube-system`.
-
-Install sealed-secrets:
-
-```shell
+```bash
 cd applications/sealed-secrets
 helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
 helm repo update
 helm dependency build
 kubectl create namespace sealed-secrets
 helm template sealed-secrets . -n sealed-secrets | kubectl apply -f -
-```
 
-Wait for the controller to be ready:
-
-```shell
+# Wait for controller
 kubectl wait --for=condition=available --timeout=300s deployment/sealed-secrets -n sealed-secrets
 ```
 
-You can verify it's running:
+#### 3. Generate and Seal Secrets
 
-```shell
-kubectl get deployment sealed-secrets -n sealed-secrets
-```
-
-Now generate and seal all application secrets:
-
-```shell
-cd ../..
+```bash
 ./seal-secrets.sh
 ```
 
-The script will seal all secrets in the repository. If any secrets contain placeholder values (like `YOUR_SMTP_USERNAME`),
-the script will skip them and warn you to update them first.
+The script seals all secrets. If any contain placeholder values, it will warn you to update them first.
 
-Once all secrets are sealed successfully, commit them to your repository:
+#### 4. Commit Sealed Secrets
 
-```shell
+```bash
 git add applications/*/templates/*-sealed-secret.yaml
 git commit -m "Add sealed secrets for applications"
 git push
 ```
 
-### Argo resources (applications)
+#### 5. Install ArgoCD Resources
 
-Now we can install the Argo resources that define the applications and their configuration. But first, we need to
-change the repository URL to our own repository.
-
-Edit `applications/argo-cd-resources/values.yaml`:
-
-```yaml
-repoUrl: https://github.com/os2iot/<YOUR REPO>.git
-```
-
-Edit `applications/cert-manager/templates/cluster-issuer.yaml` and change the email address to your own:
-
-```yaml
-spec:
-  acme:
-    email: <CERT_MAIL>
- ```
-
-Now commit the changes to the repository before the next step in Argo installation, which is to install the resources:
-
-```shell
-cd applications/argo-cd-resources/
+```bash
+cd applications/argo-cd-resources
 helm template argo-cd-resources . -n argo-cd | kubectl apply -f -
 ```
 
-This will install all the applications from `applications/argo-cd-resources/values.yaml` that are set to
-`automated: true`. ArgoCD will:
-- Adopt the existing sealed-secrets deployment and manage it going forward
-- Automatically sync all applications that have their sealed secrets committed
+ArgoCD will now automatically sync all applications.
 
-All applications can now deploy automatically since sealed-secrets was installed first.
+---
 
-> **Note:** The automated `bootstrap.sh` script performs all the steps above automatically. For future deployments, consider using it to simplify the process.
+## Architecture Reference
 
+### Application Sync Waves
 
-## PostgreSQL Database
+Sync waves ensure that dependencies are deployed before the applications that need them. For example, the PostgreSQL
+operator must be running before you can create a PostgreSQL cluster, and the database must exist before applications can
+connect to it. ArgoCD deploys applications in waves to enforce this ordering. All apps have automatic retry (5 attempts,
+30s-5m exponential backoff) to handle transient failures like webhook unavailability during operator startup.
 
-The platform uses a shared PostgreSQL cluster managed by CloudNativePG. The database is deployed in the `postgres` namespace and shared by ChirpStack and OS2IoT backend.
+| Wave | Applications                                                                | Purpose                             |
+|------|-----------------------------------------------------------------------------|-------------------------------------|
+| 0    | `cluster-resources`                                                         | CSI driver and StorageClasses       |
+| 1    | `argo-cd`, `argo-cd-resources`, `traefik`, `cert-manager`, `sealed-secrets` | Core infrastructure                 |
+| 2    | `cloudnative-pg-operator`, `redis-operator`                                 | Operators (CRDs and webhooks)       |
+| 3    | `postgres`                                                                  | Database cluster                    |
+| 4    | `mosquitto`, `zookeeper`                                                    | Message brokers                     |
+| 5    | `chirpstack`, `chirpstack-gateway`, `kafka`                                 | Apps depending on brokers/databases |
+| 6    | `mosquitto-broker`, `os2iot-backend`                                        | Apps depending on postgres          |
+| 7    | `os2iot-frontend`                                                           | Frontend                            |
 
-### Database Users
+### Service Naming
 
-| User | Purpose | Database | Access |
-|------|---------|----------|--------|
-| `os2iot` | OS2IoT backend (owner) | os2iot | Full (owner) |
-| `chirpstack` | ChirpStack LoRaWAN server | os2iot | Full (granted) |
-| `mqtt` | Mosquitto broker authentication | os2iot | Read-only (SELECT) |
+Services follow the pattern `{app-name}-svc.{namespace}`:
 
-### Creating Database Secrets
+| Service                 | Address                                           |
+|-------------------------|---------------------------------------------------|
+| PostgreSQL (read-write) | `postgres-cluster-rw.postgres:5432`               |
+| PostgreSQL (read-only)  | `postgres-cluster-ro.postgres:5432`               |
+| Mosquitto (ChirpStack)  | `mosquitto-svc.mosquitto:1883`                    |
+| Mosquitto (Devices)     | `mosquitto-broker-svc.mosquitto-broker:8884/8885` |
+| Kafka                   | `kafka-svc.kafka:9092`                            |
+| Zookeeper               | `zookeeper-svc.zookeeper:2181`                    |
+| ChirpStack              | `chirpstack-clusterip-svc.chirpstack:8081`        |
 
-Database credentials must be sealed for both the postgres namespace (for role creation) and the application namespaces (for deployment access).
+### Ingress Resources
 
-#### 1. Create local secret files
+| Type                    | Used By             | Command                          |
+|-------------------------|---------------------|----------------------------------|
+| Kubernetes Ingress      | argo-cd, chirpstack | `kubectl get ingress -A`         |
+| Traefik IngressRoute    | os2iot-frontend     | `kubectl get ingressroute -A`    |
+| Traefik IngressRouteUDP | LoRaWAN             | `kubectl get ingressrouteudp -A` |
+
+---
+
+## Configuration Reference
+
+### PostgreSQL Database
+
+The platform uses a shared PostgreSQL cluster managed by CloudNativePG. A single database cluster simplifies operations
+and backup management. Because Kubernetes enforces namespace isolation for security, each application that needs
+database access requires its own copy of the credentials secret in its namespace - this is why you'll see the same
+password defined in multiple secret files.
+
+#### Database Users
+
+| User         | Purpose                         | Database | Access             |
+|--------------|---------------------------------|----------|--------------------|
+| `os2iot`     | OS2IoT backend (owner)          | os2iot   | Full (owner)       |
+| `chirpstack` | ChirpStack LoRaWAN server       | os2iot   | Full (granted)     |
+| `mqtt`       | Mosquitto broker authentication | os2iot   | Read-only (SELECT) |
+
+#### Creating Database Secrets
+
+Database credentials must be sealed for both the postgres namespace (for role creation) and application namespaces (for
+deployment access).
+
+##### 1. Create local secret files
 
 Create the following files in `applications/postgres/local-secrets/`:
 
 **chirpstack-user-secret.yaml** (for postgres namespace):
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -467,6 +610,7 @@ stringData:
 ```
 
 **chirpstack-user-secret-for-chirpstack-ns.yaml** (for chirpstack namespace):
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -480,6 +624,7 @@ stringData:
 ```
 
 **os2iot-user-secret.yaml** (for postgres namespace):
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -493,6 +638,7 @@ stringData:
 ```
 
 **os2iot-user-secret-for-backend-ns.yaml** (for os2iot-backend namespace):
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -506,6 +652,7 @@ stringData:
 ```
 
 **mqtt-user-secret.yaml** (for postgres namespace):
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -519,6 +666,7 @@ stringData:
 ```
 
 **mqtt-user-secret-for-broker-ns.yaml** (for mosquitto-broker namespace):
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -531,19 +679,12 @@ stringData:
   password: <SAME_PASSWORD_AS_ABOVE>
 ```
 
-#### 2. Generate secure passwords
-
-```bash
-# Generate a random 32-character hex password
-echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
-```
-
-#### 3. Seal the secrets
+##### 2. Seal the secrets
 
 ```bash
 cd applications/postgres
 
-# Seal secrets for postgres namespace (CloudNativePG roles)
+# Seal secrets for postgres namespace
 kubeseal --format yaml \
   --controller-name=sealed-secrets \
   --controller-namespace=sealed-secrets \
@@ -557,7 +698,7 @@ kubeseal --format yaml \
   --controller-namespace=sealed-secrets \
   < local-secrets/mqtt-user-secret.yaml > templates/mqtt-user-sealed-secret.yaml
 
-# Seal secrets for application namespaces (deployment access)
+# Seal secrets for application namespaces
 kubeseal --format yaml \
   --controller-name=sealed-secrets \
   --controller-namespace=sealed-secrets \
@@ -572,32 +713,29 @@ kubeseal --format yaml \
   < local-secrets/mqtt-user-secret-for-broker-ns.yaml > ../mosquitto-broker/templates/postgres-cluster-mqtt-sealed-secret.yaml
 ```
 
-#### 4. Commit the sealed secrets
+#### Database Connection Details
 
-Only commit the sealed secret files (`*-sealed-secret.yaml`). The `local-secrets/` directories are gitignored.
-
-### Database Connection Details
-
-Applications connect to the database using:
-
-| Setting | Value |
-|---------|-------|
+| Setting           | Value                          |
+|-------------------|--------------------------------|
 | Host (read-write) | `postgres-cluster-rw.postgres` |
-| Host (read-only) | `postgres-cluster-ro.postgres` |
-| Port | `5432` |
-| Database | `os2iot` |
+| Host (read-only)  | `postgres-cluster-ro.postgres` |
+| Port              | `5432`                         |
+| Database          | `os2iot`                       |
 
 ---
 
-## OS2IoT Backend
+### OS2IoT Backend
 
-The OS2IoT backend requires a CA certificate and key for device authentication (MQTT client certificates).
+The backend is the central API server that also acts as a certificate authority for IoT device authentication. It
+requires several secrets: a CA certificate and key for signing device certificates, an encryption key for protecting
+sensitive data in the database, SMTP credentials for sending notifications, and a ChirpStack API key for communicating
+with the LoRaWAN network server.
 
-### CA Certificate Setup
+#### CA Certificate Setup
 
-The backend needs a `ca-keys` secret containing the CA certificate and encrypted private key.
+The backend needs a CA certificate and key for device authentication (MQTT client certificates).
 
-#### 1. Generate CA certificate and key
+##### 1. Generate CA certificate and key
 
 ```bash
 cd applications/os2iot-backend/local-secrets
@@ -610,7 +748,7 @@ openssl req -new -x509 -days 3650 -key ca.key -passin pass:<CA_KEY_PASSWORD> -ou
   -subj "/CN=OS2IoT-Device-CA/O=OS2IoT/C=DK"
 ```
 
-#### 2. Create the secret file
+##### 2. Create the secret file
 
 Create `applications/os2iot-backend/local-secrets/ca-keys.yaml`:
 
@@ -633,7 +771,7 @@ stringData:
     -----END ENCRYPTED PRIVATE KEY-----
 ```
 
-#### 3. Seal the secret
+##### 3. Seal the secret
 
 ```bash
 cd applications/os2iot-backend
@@ -643,18 +781,11 @@ kubeseal --format yaml \
   < local-secrets/ca-keys.yaml > templates/ca-keys-sealed-secret.yaml
 ```
 
-### Encryption Key Setup
+#### Encryption Key Setup
 
 The backend uses a symmetric encryption key for encrypting sensitive data in the database.
 
-#### 1. Generate an encryption key
-
-```bash
-# Generate a random 32-character hex key
-echo "$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)"
-```
-
-#### 2. Create the secret file
+**1. Create the secret file**
 
 Create `applications/os2iot-backend/local-secrets/encryption-secret.yaml`:
 
@@ -666,10 +797,10 @@ metadata:
   namespace: os2iot-backend
 type: Opaque
 stringData:
-  symmetricKey: "<YOUR_GENERATED_KEY>"
+  symmetricKey: "<GENERATE_32_CHAR_HEX_KEY>"
 ```
 
-#### 3. Seal the secret
+**2. Seal the secret**
 
 ```bash
 cd applications/os2iot-backend
@@ -679,11 +810,11 @@ kubeseal --format yaml \
   < local-secrets/encryption-secret.yaml > templates/encryption-sealed-secret.yaml
 ```
 
-### Email Credentials Setup
+#### Email Credentials Setup
 
-The backend uses SMTP for sending emails (password resets, notifications, etc.).
+The backend uses SMTP for sending emails (password resets, notifications).
 
-#### 1. Create the secret file
+**1. Create the secret file**
 
 Create `applications/os2iot-backend/local-secrets/email-secret.yaml`:
 
@@ -699,7 +830,7 @@ stringData:
   pass: "<YOUR_SMTP_PASSWORD>"
 ```
 
-#### 2. Seal the secret
+**2. Seal the secret**
 
 ```bash
 cd applications/os2iot-backend
@@ -709,9 +840,9 @@ kubeseal --format yaml \
   < local-secrets/email-secret.yaml > templates/email-sealed-secret.yaml
 ```
 
-#### 3. Configure SMTP host and port
+**3. Configure SMTP host and port**
 
-Update `applications/os2iot-backend/values.yaml` with your SMTP server details:
+Update `applications/os2iot-backend/values.yaml`:
 
 ```yaml
 os2iotBackend:
@@ -721,11 +852,12 @@ os2iotBackend:
     from: "noreply@example.com"
 ```
 
-### Debugging Startup Failures
+#### Debugging Startup Failures
 
-The backend runs database migrations on startup. If the container fails to start, use these commands to diagnose the issue.
+The backend runs database migrations on startup. If the container fails to start, use these commands to diagnose the
+issue.
 
-#### View container logs
+##### View container logs
 
 ```bash
 # View logs from current container
@@ -735,9 +867,10 @@ kubectl logs -n os2iot-backend -l app=os2iot-backend
 kubectl logs -n os2iot-backend -l app=os2iot-backend --previous
 ```
 
-#### View termination message
+##### View termination message
 
-The container is configured with `terminationMessagePolicy: FallbackToLogsOnError`, which captures the last log output on failure:
+The container is configured with `terminationMessagePolicy: FallbackToLogsOnError`, which captures the last log output
+on failure:
 
 ```bash
 kubectl describe pod -n os2iot-backend -l app=os2iot-backend
@@ -745,9 +878,10 @@ kubectl describe pod -n os2iot-backend -l app=os2iot-backend
 
 Look for the `Last State` section to see the termination reason and message.
 
-#### Access npm debug logs
+##### Access npm debug logs
 
-npm writes detailed logs to `/home/node/.npm/_logs/`. These are persisted in an emptyDir volume and can be accessed if the container is in CrashLoopBackOff:
+npm writes detailed logs to `/home/node/.npm/_logs/`. These are persisted in an emptyDir volume and can be accessed if
+the container is in CrashLoopBackOff:
 
 ```bash
 # List available log files
@@ -760,33 +894,32 @@ kubectl exec -n os2iot-backend <pod-name> -- cat /home/node/.npm/_logs/<log-file
 kubectl cp os2iot-backend/<pod-name>:/home/node/.npm/_logs ./npm-logs
 ```
 
-#### Common issues
+##### Common startup issues
 
-| Symptom | Likely Cause | Solution |
-|---------|--------------|----------|
-| SIGTERM during migrations | Startup probe timeout | Increase `failureThreshold` in deployment |
-| Database connection refused | PostgreSQL not ready | Check postgres-cluster pods and secrets |
-| Missing secret key | Sealed secret not deployed | Verify sealed secrets exist in namespace |
+| Symptom                     | Likely Cause               | Solution                                  |
+|-----------------------------|----------------------------|-------------------------------------------|
+| SIGTERM during migrations   | Startup probe timeout      | Increase `failureThreshold` in deployment |
+| Database connection refused | PostgreSQL not ready       | Check postgres-cluster pods and secrets   |
+| Missing secret key          | Sealed secret not deployed | Verify sealed secrets exist in namespace  |
 
-### ChirpStack API Key Setup
+#### ChirpStack API Key Setup
 
-The OS2IoT backend requires a **Network Server (Admin) API key** from ChirpStack to communicate with the LoRaWAN network server for device management and data retrieval.
+The backend requires a **Network Server (Admin) API key** from ChirpStack to communicate with the LoRaWAN network server
+for device management and data retrieval.
 
-**Important**: This must be a Network Server API key (not a Tenant API key), as the backend queries gateways and devices across the entire ChirpStack instance.
+**Important**: This must be a Network Server API key (not a Tenant API key), as the backend queries gateways and devices
+across the entire ChirpStack instance.
 
-#### Option 1: Automated Generation (Recommended)
+##### Option 1: Automated Generation (Recommended)
 
-A Kubernetes Job automatically generates the API key when ChirpStack is deployed.
-
-**Using the helper script:**
-
-After ChirpStack is deployed, run the helper script to generate and configure the API key:
+After ChirpStack is deployed, run the helper script:
 
 ```bash
 ./generate-chirpstack-api-key.sh
 ```
 
 This script will:
+
 1. Connect to the running ChirpStack pod
 2. Generate a Network Server API key via ChirpStack CLI
 3. Automatically create/update `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`
@@ -801,48 +934,22 @@ git commit -m "Add ChirpStack API key"
 git push
 ```
 
-**Retrieving from the Job logs:**
+##### Option 2: Manual Creation via UI
 
-Alternatively, retrieve the API key from the Job that runs automatically during deployment:
+1. Port-forward to ChirpStack:
 
-```bash
-kubectl logs job/chirpstack-create-api-key -n chirpstack
-```
-
-Look for the API key in the output (it will be a long JWT token starting with `eyJ`). Copy it and update `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`:
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: chirpstack-api-key
-  namespace: os2iot-backend
-type: Opaque
-stringData:
-  apiKey: "<PASTE_API_KEY_HERE>"
-```
-
-Then seal and commit as shown above.
-
-#### Option 2: Manual Creation via UI
-
-If you prefer manual control, create the API key through the ChirpStack UI:
-
-1. Access ChirpStack:
    ```bash
    kubectl port-forward svc/chirpstack-clusterip-svc -n chirpstack 8080:8081
-   # Then open http://localhost:8080
    ```
 
-2. Login with default credentials: `admin` / `admin`
+2. Login at <http://localhost:8080> (admin/admin)
 
-3. Navigate to **Network Server** → **API Keys** in the left menu (NOT Tenant API Keys)
+3. Navigate to **Network Server** → **API Keys** (NOT Tenant API Keys)
 
-4. Click **Add API key**, give it a descriptive name (e.g., "os2iot-backend"), and click **Submit**
+4. Create key, copy the token immediately
 
-5. **Important**: Copy the generated token immediately - it will only be shown once
+5. Create `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`:
 
-6. Create `applications/os2iot-backend/local-secrets/chirpstack-api-key.yaml`:
    ```yaml
    apiVersion: v1
    kind: Secret
@@ -854,19 +961,9 @@ If you prefer manual control, create the API key through the ChirpStack UI:
      apiKey: "<YOUR_CHIRPSTACK_API_KEY>"
    ```
 
-7. Seal and commit:
-   ```bash
-   ./seal-secrets.sh
-   git add applications/os2iot-backend/templates/chirpstack-api-key-sealed-secret.yaml
-   git commit -m "Add ChirpStack API key"
-   git push
-   ```
+6. Seal and commit.
 
-#### Disable Automatic Job
-
-To disable the automatic API key generation job, set `chirpstack.createApiKeyJob.enabled: false` in `applications/chirpstack/values.yaml`.
-
-#### Verify Configuration
+**Verify Configuration:**
 
 Ensure `applications/os2iot-backend/values.yaml` has the correct ChirpStack service URL:
 
@@ -881,46 +978,34 @@ The backend will automatically use the `chirpstack-api-key` secret for authentic
 
 ---
 
-## OS2IoT Organization Bootstrap
+### OS2IoT Organization Bootstrap
 
-After the backend is deployed and running, you need to create a default organization to start using OS2IoT.
+After the backend is deployed, create a default organization.
 
-### Automated Bootstrap (Recommended)
+#### Automatic Organization Creation
 
-A Kubernetes Job automatically creates a default organization after the backend is deployed. This runs as an ArgoCD PostSync hook.
-
-To verify the bootstrap job ran successfully:
+A Kubernetes Job automatically creates a default organization. Verify:
 
 ```bash
 kubectl logs job/os2iot-backend-bootstrap -n os2iot-backend
 ```
 
-### Manual Bootstrap
-
-If the automated bootstrap fails or you want to run it manually, use the helper script:
+#### Manual Organization Creation
 
 ```bash
 ./bootstrap-os2iot-org.sh
 ```
 
-This script will:
-1. Connect to the backend API via port-forward
-2. Authenticate with the default admin credentials
-3. Create a "Default Organization"
-4. Display the login credentials
-
-### Default Credentials
-
-After bootstrap, you can log in with:
+#### Default Credentials
 
 - **Email:** `global-admin@os2iot.dk`
 - **Password:** `hunter2`
 
-**⚠️ IMPORTANT:** Change the default password immediately after first login!
+**Change the default password immediately after first login!**
 
-### Access the Frontend
+#### Access the Frontend
 
-**IMPORTANT:** You must port-forward BOTH the frontend AND backend for the frontend to work properly:
+**Both port-forwards are required:**
 
 ```bash
 # Terminal 1: Backend API
@@ -930,87 +1015,76 @@ kubectl port-forward -n os2iot-backend svc/os2iot-backend-svc 3000:3000
 kubectl port-forward -n os2iot-frontend svc/os2iot-frontend-svc 8081:8081
 ```
 
-Then open: http://localhost:8081
-
-**Why both?** The frontend is configured to connect to `http://localhost:3000/api/v1/`. When you port-forward only the frontend, the browser cannot reach the backend API, causing CORS errors. Both port-forwards must be active simultaneously.
-
-### Disable Automatic Bootstrap
-
-To disable the automatic bootstrap job, set `os2iotBackend.bootstrapJob.enabled: false` in `applications/os2iot-backend/values.yaml`.
+Open: <http://localhost:8081>
 
 ---
 
-## Mosquitto Broker
+### Mosquitto Broker
 
-MQTT broker for OS2IoT with PostgreSQL-based authentication. Exposes two ports:
+This deployment includes two separate Mosquitto instances that serve different purposes. The first (`mosquitto`) handles
+internal ChirpStack LoRaWAN traffic and runs without encryption since it only accepts connections from within the
+cluster. The second (`mosquitto-broker`) is the external-facing broker for IoT devices, secured with TLS and
+authenticating clients against the PostgreSQL database.
 
-| Port | Description |
-|------|-------------|
+| Port | Description                                 |
+|------|---------------------------------------------|
 | 8884 | MQTT with client certificate authentication |
-| 8885 | MQTT with username/password authentication |
+| 8885 | MQTT with username/password authentication  |
 
-### Database Configuration
+#### Database Configuration
 
 Configure the PostgreSQL connection in your values override or via ArgoCD:
 
 ```yaml
 mosquittoBroker:
   database:
-    host: "os2iot-postgresql"
+    host: "postgres-cluster-rw.postgres"
     port: "5432"
-    username: "os2iot"
+    username: "mqtt"
     password: "your-password"
     name: "os2iot"
     sslMode: "disable"  # or "verify-ca" for production
 ```
 
-### TLS Certificates
+#### TLS Certificates
 
-The broker requires TLS certificates for secure MQTT communication. Certificates are stored as Kubernetes Secrets and managed via SealedSecrets.
+The broker requires TLS certificates for secure MQTT communication. Certificates are stored as Kubernetes Secrets and
+managed via SealedSecrets.
 
-#### Required Secrets
+##### Required Secrets
 
-| Secret Name | Keys | Description |
-|-------------|------|-------------|
-| `ca-keys` | `ca.crt` | CA certificate for client verification |
-| `server-keys` | `server.crt`, `server.key` | Server certificate and private key |
+| Secret Name   | Keys                       | Description                            |
+|---------------|----------------------------|----------------------------------------|
+| `ca-keys`     | `ca.crt`                   | CA certificate for client verification |
+| `server-keys` | `server.crt`, `server.key` | Server certificate and private key     |
 
-#### Option 1: Generate Self-Signed Certificates (Development)
+##### Option 1: Generate Self-Signed Certificates (Development)
 
 ```bash
 cd applications/mosquitto-broker/local-secrets
 
-# Generate CA key and certificate (valid 10 years)
+# Generate CA
 openssl genrsa -out ca.key 4096
 openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
   -subj "/CN=OS2IoT-Mosquitto-CA/O=OS2IoT/C=DK"
 
-# Generate server key and CSR
+# Generate server certificate
 openssl genrsa -out server.key 4096
 openssl req -new -key server.key -out server.csr \
   -subj "/CN=mosquitto-broker/O=OS2IoT/C=DK"
-
-# Sign server certificate with CA (valid 10 years)
 openssl x509 -req -days 3650 -in server.csr \
   -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
 
-# Clean up
 rm server.csr ca.srl
 ```
 
-#### Option 2: Use Real Certificates (Production)
+##### Option 2: Use Real Certificates (Production)
 
-For production, obtain certificates from a trusted CA or your organization's internal CA:
+Obtain certificates from a trusted CA and place in `applications/mosquitto-broker/local-secrets/`.
 
-1. Obtain a CA certificate (or use your organization's internal CA)
-2. Request a server certificate for your MQTT broker hostname
-3. Place `ca.crt`, `server.crt`, and `server.key` in `applications/mosquitto-broker/local-secrets/`
+##### Seal the Certificates
 
-#### Sealing the Certificates
-
-After generating or obtaining certificates, create and seal the secrets:
-
-1. Create `applications/mosquitto-broker/local-secrets/ca-keys.yaml`:
+Create `applications/mosquitto-broker/local-secrets/ca-keys.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -1026,7 +1100,7 @@ stringData:
     -----END CERTIFICATE-----
 ```
 
-2. Create `applications/mosquitto-broker/local-secrets/server-keys.yaml`:
+Create `applications/mosquitto-broker/local-secrets/server-keys.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -1046,7 +1120,7 @@ stringData:
     -----END PRIVATE KEY-----
 ```
 
-3. Seal the secrets:
+Seal:
 
 ```bash
 kubeseal --format yaml \
@@ -1059,7 +1133,7 @@ kubeseal --format yaml \
   < applications/mosquitto-broker/local-secrets/server-keys.yaml > applications/mosquitto-broker/templates/server-keys-sealed-secret.yaml
 ```
 
-4. Commit only the sealed secrets - the `local-secrets/` directory is gitignored.
+Commit only the sealed secrets - the `local-secrets/` directory is gitignored.
 
 #### Rotating Certificates
 
@@ -1069,6 +1143,148 @@ To rotate certificates:
 2. Create new sealed secrets
 3. Commit and push - ArgoCD will automatically deploy the updated secrets
 4. Restart the broker pod:
+
    ```bash
    kubectl rollout restart deployment/mosquitto-broker -n mosquitto-broker
    ```
+
+---
+
+## Operations
+
+Day-to-day operations focus on monitoring ArgoCD sync status and pod health. CloudNativePG handles database
+maintenance (backups, failover, connection pooling) automatically, so you primarily need to watch for application-level
+issues and ensure ArgoCD can reach your Git repository.
+
+### Monitoring Application Health
+
+```bash
+# Check all ArgoCD applications
+kubectl get applications -n argo-cd
+
+# Watch sync status
+watch kubectl get applications -n argo-cd
+
+# Check all pods
+kubectl get pods -A
+
+# Check PostgreSQL cluster
+kubectl get clusters -n postgres
+```
+
+### Backup Procedures
+
+#### PostgreSQL Backup (CloudNativePG)
+
+Enable backups in `applications/postgres/values.yaml`:
+
+```yaml
+backups:
+  enabled: true
+  provider: s3
+  s3:
+    bucket: "your-backup-bucket"
+    region: "eu-west-1"
+  retentionPolicy: "30d"
+  schedule: "0 0 * * *"  # Daily at midnight
+```
+
+### Upgrading
+
+1. Update chart versions in `Chart.yaml` files
+2. Rebuild dependencies: `helm dependency build`
+3. Commit and push - ArgoCD auto-syncs
+4. Monitor: `kubectl get applications -n argo-cd`
+
+### Uninstalling
+
+**Full cleanup:**
+
+```bash
+./uninstall.sh
+```
+
+**Manual (preserves data):**
+
+```bash
+kubectl delete applications --all -n argo-cd
+```
+
+---
+
+## Troubleshooting
+
+When something goes wrong, start by running `kubectl get pods -A` to find pods that aren't Running or Ready. Once you've
+identified the unhealthy pod, check its logs and describe output to understand what's failing. The table below covers
+common issues, but the debug commands that follow are useful for investigating any problem.
+
+### Common Issues
+
+| Symptom                       | Likely Cause               | Solution                                              |
+|-------------------------------|----------------------------|-------------------------------------------------------|
+| Frontend shows CORS errors    | Backend not accessible     | Run BOTH backend and frontend port-forwards           |
+| Pod stuck in Pending          | No storage available       | Check StorageClass and PVC status                     |
+| CrashLoopBackOff              | Database not ready         | Check postgres-cluster pods in postgres namespace     |
+| Sealed Secret not decrypting  | Wrong controller namespace | Verify sealed-secrets in sealed-secrets namespace     |
+| ArgoCD sync failed            | Webhook not ready          | Wait and retry; check operator pods                   |
+| LoadBalancer stuck in Pending | No LB provider             | Install MetalLB (bare metal) or verify cloud provider |
+| SIGTERM during migrations     | Startup probe timeout      | Increase `failureThreshold` in deployment             |
+
+### Debug Commands
+
+```bash
+# View pod logs
+kubectl logs -n <namespace> -l app=<app-name> --tail=100
+
+# View previous crashed container logs
+kubectl logs -n <namespace> -l app=<app-name> --previous
+
+# Describe failing pod
+kubectl describe pod -n <namespace> <pod-name>
+
+# Check events
+kubectl get events -n <namespace> --sort-by='.lastTimestamp'
+
+# Test database connectivity
+kubectl exec -n postgres -it postgres-cluster-1 -- psql -U postgres -c "SELECT 1"
+
+# Test sealed-secrets controller
+kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=sealed-secrets
+
+# View all ingress resources
+kubectl get ingress -A
+kubectl get ingressroute -A
+kubectl get ingressrouteudp -A
+```
+
+### Backend Debugging
+
+```bash
+# View container logs
+kubectl logs -n os2iot-backend -l app=os2iot-backend
+
+# View termination message
+kubectl describe pod -n os2iot-backend -l app=os2iot-backend
+
+# Access npm debug logs (if in CrashLoopBackOff)
+kubectl exec -n os2iot-backend <pod-name> -- ls -la /home/node/.npm/_logs/
+```
+
+---
+
+## Contributing
+
+Before submitting changes, test your Helm templates locally with `helm template <chart-name> applications/<chart-name>/`
+to catch syntax errors early.
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test with `helm template`
+5. Submit a pull request
+
+---
+
+## License
+
+This project is licensed under the MPL-2.0 License. See the OS2IoT project for details.
