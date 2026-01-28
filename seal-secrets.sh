@@ -99,6 +99,26 @@ seal_secret \
     "../chirpstack/templates/postgres-cluster-chirpstack-sealed-secret.yaml" \
     "ChirpStack user (chirpstack namespace)"
 
+echo ""
+echo -e "${BLUE}ChirpStack Secrets${NC}"
+echo "==================="
+cd "$SCRIPT_DIR/applications/chirpstack"
+
+seal_secret \
+    "local-secrets/jwt-secret.yaml" \
+    "templates/jwt-sealed-secret.yaml" \
+    "JWT secret"
+
+seal_secret \
+    "local-secrets/cloudnative-pg-cluster-secret.yaml" \
+    "templates/cloudnative-pg-cluster-sealed-secret.yaml" \
+    "CloudNativePG cluster secret"
+
+echo ""
+echo -e "${BLUE}PostgreSQL Secrets (continued)${NC}"
+echo "==============================="
+cd "$SCRIPT_DIR/applications/postgres"
+
 seal_secret \
     "local-secrets/os2iot-user-secret-for-backend-ns.yaml" \
     "../os2iot-backend/templates/postgres-cluster-os2iot-sealed-secret.yaml" \
@@ -148,6 +168,16 @@ seal_secret \
     "local-secrets/server-keys.yaml" \
     "templates/server-keys-sealed-secret.yaml" \
     "Server certificate and key"
+
+echo ""
+echo -e "${BLUE}Cluster Resources Secrets${NC}"
+echo "========================="
+cd "$SCRIPT_DIR/applications/cluster-resources"
+
+seal_secret \
+    "local-secrets/hcloud-token.yaml" \
+    "templates/hcloud-token-sealed-secret.yaml" \
+    "Hetzner Cloud API token"
 
 echo ""
 echo -e "${BLUE}=== Summary ===${NC}"
