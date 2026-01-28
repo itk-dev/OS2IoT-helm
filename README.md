@@ -158,28 +158,29 @@ Cloudfleet automatically provisions Hetzner Load Balancers for `LoadBalancer` ty
 - LB IPs are assigned automatically when services are created
 - The annotation `cfke.io/deployed-load-balancers` tracks provisioned LBs
 
-### Getting LB IPs for DNS
+### Getting LB IP for DNS
 
-After deploying Traefik and ChirpStack Gateway, get the assigned IPs:
+All traffic (HTTP, HTTPS, and LoRaWAN UDP) routes through a single Traefik LoadBalancer:
 
 ```bash
-kubectl get svc -A | grep LoadBalancer
+kubectl get svc traefik -n traefik
 ```
 
 Example output:
 ```
-traefik                   traefik                    LoadBalancer   10.x.x.x   91.98.0.195,128.140.31.98   80:30080/TCP,443:30443/TCP
-chirpstack-gateway        chirpstack-gateway-svc     LoadBalancer   10.x.x.x   142.132.247.185             1700:31501/UDP
+NAME      TYPE           CLUSTER-IP     EXTERNAL-IP       PORT(S)
+traefik   LoadBalancer   10.x.x.x       91.98.0.195       80:30080/TCP,443:30443/TCP,1700:31700/UDP
 ```
 
 ### DNS Configuration
 
-Configure DNS A records pointing to the Traefik LB IPs:
+Configure DNS A records pointing to the single Traefik LB IP:
 ```
 your-domain.com        A     <traefik-lb-ip>
 *.your-domain.com      A     <traefik-lb-ip>
-lora.your-domain.com   A     <chirpstack-gateway-lb-ip>
 ```
+
+**Note:** LoRaWAN gateways connect to the same IP on UDP port 1700. Traffic is routed via IngressRouteUDP to chirpstack-gateway-svc.
 
 ### Limiting to Single LB (Single Region)
 

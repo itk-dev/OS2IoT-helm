@@ -963,6 +963,13 @@ traefik:
         tracing:  # @schema type:[boolean, null]; default: true
         # -- Defines the tracing verbosity level for this entryPoint.
         traceVerbosity:  # @schema enum:[minimal, detailed, null]; type:[string, null]; default: minimal
+    # -- LoRaWAN UDP entrypoint for ChirpStack Gateway Bridge
+    lorawan:
+      port: 1700
+      expose:
+        default: true
+      exposedPort: 1700
+      protocol: UDP
 
   # -- TLS Options are created as [TLSOption CRDs](https://doc.traefik.io/traefik/https/tls/#tls-options)
   # When using `labelSelector`, you'll need to set labels on tlsOption accordingly.

@@ -4,9 +4,8 @@ metadata:
   name: {{ $.Chart.Name }}-svc
   labels:
     app: {{ $.Chart.Name }}
-  # Cloudfleet auto-provisions LBs
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - name: udp
       port: 1700

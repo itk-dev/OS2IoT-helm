@@ -15,6 +15,9 @@ chirpstack:
   nodeSelector:
     topology.kubernetes.io/region: fsn1
 
+  ingress:
+    host: chirpstack.os2iot.itkdev.dk
+
   resources:
     limits:
       cpu: 2000m

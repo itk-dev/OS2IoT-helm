@@ -1,0 +1,13 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteUDP
+metadata:
+  name: {{ $.Chart.Name }}-udp
+  labels:
+    app: {{ $.Chart.Name }}
+spec:
+  entryPoints:
+    - lorawan
+  routes:
+    - services:
+        - name: {{ $.Chart.Name }}-svc
+          port: 1700
