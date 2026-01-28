@@ -182,6 +182,29 @@ your-domain.com        A     <traefik-lb-ip>
 
 **Note:** LoRaWAN gateways connect to the same IP on UDP port 1700. Traffic is routed via IngressRouteUDP to chirpstack-gateway-svc.
 
+### Viewing Ingress Resources
+
+This deployment uses two types of ingress resources:
+
+| Type | Used By | Command |
+|------|---------|---------|
+| Kubernetes Ingress | argo-cd, chirpstack | `kubectl get ingress -A` |
+| Traefik IngressRoute | os2iot-frontend | `kubectl get ingressroute -A` |
+
+The frontend uses Traefik's `IngressRoute` CRD instead of standard Kubernetes `Ingress` because it needs to route `/api` requests to the backend service in a different namespace. Standard Ingress doesn't support cross-namespace service routing.
+
+To view all ingress resources:
+```bash
+# Standard Kubernetes Ingress
+kubectl get ingress -A
+
+# Traefik IngressRoute (CRD)
+kubectl get ingressroute -A
+
+# Traefik IngressRouteUDP (for LoRaWAN)
+kubectl get ingressrouteudp -A
+```
+
 ### Limiting to Single LB (Single Region)
 
 By default, Cloudfleet creates LBs in every region where nodes exist. To consolidate to a single LB, all applications are pre-configured to run in **fsn1** region.

@@ -31,3 +31,4 @@ os2iotFrontend:
     production: "true"
     baseUrl: "/api/v1/"
     tablePageSize: "25"
+    enableKombit: "false"

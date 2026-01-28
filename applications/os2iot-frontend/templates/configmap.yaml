@@ -6,3 +6,4 @@ data:
   PRODUCTION: {{ .Values.os2iotFrontend.config.production | quote }}
   BASE_URL: {{ .Values.os2iotFrontend.config.baseUrl | quote }}
   TABLE_PAGE_SIZE: {{ .Values.os2iotFrontend.config.tablePageSize | quote }}
+  ENABLE_KOMBIT: {{ .Values.os2iotFrontend.config.enableKombit | quote }}
