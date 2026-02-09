@@ -22,7 +22,7 @@ cloudnative-pg:
 
   cluster:
     # -- Number of instances
-    instances: 2
+    instances: 1
 
     # -- Image pull policy
     imagePullPolicy: IfNotPresent
