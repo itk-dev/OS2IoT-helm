@@ -284,6 +284,8 @@ gateway packets, a [Hetzner Floating IP](https://docs.hetzner.com/cloud/floating
 2. A Hetzner Floating IP (`78.46.245.217` / `lora.os2iot.itkdev.dk`) is pointed at the node running Traefik
 3. [`hcloud-fip-controller`](https://github.com/cbeneke/hcloud-fip-controller) automatically reassigns the Floating IP
    to a node running Traefik whenever pods are rescheduled
+4. A `fip-network-config` DaemonSet adds the Floating IP to each node's `eth0` interface so the OS accepts traffic on it
+5. The Hetzner/Cloudfleet firewall must allow UDP 1700 inbound
 
 **Components** (deployed by `cluster-resources` in `kube-system`):
 
@@ -291,7 +293,8 @@ gateway packets, a [Hetzner Floating IP](https://docs.hetzner.com/cloud/floating
 |----------|---------|
 | `fip-controller` Deployment (2 replicas) | Leader election ensures one active instance assigns the Floating IP to its node via the Hetzner API |
 | `fip-controller-config` ConfigMap | Lists the Floating IPs to manage and how to identify node addresses |
-| `fip-controller` ServiceAccount + RBAC | Permissions to list nodes and manage leader election leases |
+| `fip-controller` ServiceAccount + RBAC | Permissions to list nodes/pods and manage leader election leases |
+| `fip-network-config` DaemonSet | Adds Floating IP to each node's network interface (`ip addr add <ip>/32 dev eth0`) |
 
 The fip-controller pods use `requiredDuringSchedulingIgnoredDuringExecution` pod affinity to Traefik pods, ensuring
 they only schedule on nodes where Traefik is listening on hostPort 1700.
@@ -300,24 +303,71 @@ they only schedule on nodes where Traefik is listening on hostPort 1700.
 
 ```yaml
 fipController:
+  image:
+    repository: cbeneke/hcloud-fip-controller
+    tag: v0.4.1
   floatingIPs:
     - "78.46.245.217"    # Hetzner Floating IP for LoRaWAN
   nodeAddressType: "external"  # Match nodes by external IP
 ```
 
-**Verify after deployment:**
+#### Floating IP Setup
+
+##### 1. Create Floating IP in Hetzner
 
 ```bash
-# Check fip-controller pods are running
-kubectl get pods -n kube-system -l app=fip-controller
-
-# Check logs for successful IP assignment
-kubectl logs -n kube-system -l app=fip-controller --tail=20
+hcloud floating-ip create --type ipv4 --home-location fsn1 --name lora-gateway
+# Note the IP address for DNS and values.yaml configuration
 ```
 
-> **Note:** The fip-controller assigns the Floating IP via the Hetzner API. The node OS must also accept traffic on the
-> Floating IP address. Cloudfleet may handle this automatically. If not, a privileged DaemonSet running
-> `ip addr add <floating-ip>/32 dev eth0` would be needed.
+##### 2. Update values
+
+Set the Floating IP in `applications/cluster-resources/values.yaml` under `fipController.floatingIPs`.
+
+##### 3. Configure Firewall
+
+Cloudfleet manages a cluster firewall that only allows TCP NodePorts and WireGuard by default. You must add a rule for
+UDP 1700:
+
+```bash
+# Find the Cloudfleet-managed firewall
+hcloud firewall list
+
+# Add UDP 1700 rule
+hcloud firewall add-rule <firewall-name> \
+  --direction in --protocol udp --port 1700 \
+  --source-ips 0.0.0.0/0 --source-ips ::/0
+```
+
+> **Warning:** Cloudfleet manages this firewall and may reset custom rules on cluster updates. Monitor after cluster
+> upgrades and re-apply if needed. Alternatively, create a separate firewall and apply it directly to the server.
+
+##### 4. Verify
+
+```bash
+# Check fip-controller assigned the IP to a node
+kubectl logs -n kube-system -l app=fip-controller --tail=20
+# Look for: "Switching address '78.46.245.217' to server '<node-name>'"
+
+# Check the DaemonSet added the IP to node interfaces
+kubectl logs -n kube-system -l app=fip-network-config -c configure-fip
+# Look for: "Added 78.46.245.217/32 to eth0"
+
+# Test UDP from your machine
+python3 -c "
+import socket
+packet = bytes([0x02, 0x00, 0x00, 0x00]) + b'\x00' * 8 + b'{}'
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.settimeout(3)
+sock.sendto(packet, ('<floating-ip>', 1700))
+try:
+    data, addr = sock.recvfrom(1024)
+    print(f'Got response: {data.hex()} from {addr}')
+except socket.timeout:
+    print('No response (timeout)')
+sock.close()
+"
+```
 
 #### DNS Configuration
 
@@ -343,31 +393,61 @@ nodeSelector: { }
 
 ### Alternative Providers
 
-For non-Hetzner deployments, you need to configure three components:
+For non-Hetzner deployments, you need to configure these components:
 
-| Component         | Hetzner         | AWS EKS             | GKE                 | AKS                 | Bare Metal       |
-|-------------------|-----------------|---------------------|---------------------|---------------------|------------------|
-| **CSI Driver**    | hcloud-csi      | aws-ebs-csi         | Built-in            | Built-in            | Longhorn/OpenEBS |
-| **StorageClass**  | hcloud-volumes  | gp3                 | pd-standard         | managed-premium     | longhorn         |
-| **Load Balancer** | Cloudfleet auto | AWS LB Controller   | Built-in            | Built-in            | MetalLB          |
-| **Node Selector** | fsn1 region     | Remove or use zones | Remove or use zones | Remove or use zones | Remove           |
+| Component          | Hetzner                    | AWS EKS             | GKE                 | AKS                 | Bare Metal       |
+|--------------------|----------------------------|---------------------|---------------------|---------------------|------------------|
+| **CSI Driver**     | hcloud-csi                 | aws-ebs-csi         | Built-in            | Built-in            | Longhorn/OpenEBS |
+| **StorageClass**   | hcloud-volumes             | gp3                 | pd-standard         | managed-premium     | longhorn         |
+| **Load Balancer**  | Cloudfleet auto            | AWS LB Controller   | Built-in            | Built-in            | MetalLB          |
+| **UDP 1700**       | Floating IP + fip-controller | NLB (supports UDP)  | NEG (supports UDP)  | Azure LB (supports UDP) | Direct hostPort  |
+| **Node Selector**  | fsn1 region                | Remove or use zones | Remove or use zones | Remove or use zones | Remove           |
+
+#### LoRaWAN UDP on Non-Hetzner Providers
+
+The Floating IP and fip-controller in `cluster-resources` are **Hetzner-specific**. On other providers, disable them
+and handle UDP 1700 differently:
+
+1. **Disable Hetzner fip-controller**: Remove or leave the `fipController` section in
+   `applications/cluster-resources/values.yaml` (the templates only render when the values exist).
+
+2. **UDP via Load Balancer**: AWS NLB, GKE, and Azure LBs all support UDP natively. Traefik's `hostPort` is not needed
+   — the LoadBalancer service already exposes UDP 1700. Remove `hostPort: 1700` from
+   `applications/traefik/values.yaml`.
+
+3. **Bare Metal / MetalLB**: MetalLB supports UDP. The LoadBalancer service handles it directly.
+
+4. **DNS**: Point `lora.your-domain.com` to the same Load Balancer IP as your other services.
 
 #### AWS EKS
 
-1. **Disable Hetzner CSI** in `applications/cluster-resources/values.yaml`:
+1. **Disable Hetzner-specific resources** in `applications/cluster-resources/values.yaml`:
 
    ```yaml
    hcloud-csi:
      enabled: false
+   # Remove or omit the fipController section entirely
    ```
 
-2. **Install AWS EBS CSI Driver**:
+2. **Remove `hostPort`** from `applications/traefik/values.yaml` (AWS NLB supports UDP natively):
+
+   ```yaml
+   lorawan:
+     port: 1700
+     # hostPort: 1700  # Not needed on AWS
+     expose:
+       default: true
+     exposedPort: 1700
+     protocol: UDP
+   ```
+
+3. **Install AWS EBS CSI Driver**:
 
    ```bash
    eksctl create addon --name aws-ebs-csi-driver --cluster <cluster-name>
    ```
 
-3. **Create StorageClass** and update `applications/postgres/values.yaml`:
+4. **Create StorageClass** and update `applications/postgres/values.yaml`:
 
    ```yaml
    cluster:
@@ -375,7 +455,7 @@ For non-Hetzner deployments, you need to configure three components:
        storageClass: "gp3"
    ```
 
-4. **Install AWS Load Balancer Controller** and update Traefik:
+5. **Install AWS Load Balancer Controller** and update Traefik:
 
    ```yaml
    traefik:
@@ -384,13 +464,13 @@ For non-Hetzner deployments, you need to configure three components:
          service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
    ```
 
-5. **Remove nodeSelectors** from all applications or use availability zones.
+6. **Remove nodeSelectors** from all applications or use availability zones.
 
 See [AWS EBS CSI Driver documentation](https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html) for details.
 
 #### Google Cloud GKE
 
-1. **Disable Hetzner CSI** (same as AWS)
+1. **Disable Hetzner-specific resources** and **remove `hostPort`** (same as AWS steps 1-2)
 
 2. **GKE includes CSI driver by default** - create StorageClass if needed:
 
@@ -414,7 +494,7 @@ for details.
 
 #### Azure AKS
 
-1. **Disable Hetzner CSI** (same as AWS)
+1. **Disable Hetzner-specific resources** and **remove `hostPort`** (same as AWS steps 1-2)
 
 2. **AKS includes Azure Disk CSI** - use built-in StorageClass:
 
@@ -434,7 +514,10 @@ See [AKS storage documentation](https://learn.microsoft.com/en-us/azure/aks/conc
 
 #### Bare Metal / Self-Managed
 
-1. **Install Longhorn for storage**:
+1. **Disable Hetzner-specific resources** and **remove `hostPort`** (same as AWS steps 1-2). MetalLB supports UDP
+   natively.
+
+2. **Install Longhorn for storage**:
 
    ```bash
    helm repo add longhorn https://charts.longhorn.io
@@ -449,7 +532,7 @@ See [AKS storage documentation](https://learn.microsoft.com/en-us/azure/aks/conc
        storageClass: "longhorn"
    ```
 
-2. **Install MetalLB for LoadBalancer**:
+3. **Install MetalLB for LoadBalancer**:
 
    ```bash
    kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
@@ -474,7 +557,7 @@ See [AKS storage documentation](https://learn.microsoft.com/en-us/azure/aks/conc
      namespace: metallb-system
    ```
 
-3. **Remove all nodeSelectors** from application values.yaml files.
+4. **Remove all nodeSelectors** from application values.yaml files.
 
 See [Longhorn documentation](https://longhorn.io/docs/) and [MetalLB documentation](https://metallb.universe.tf/) for
 details.
