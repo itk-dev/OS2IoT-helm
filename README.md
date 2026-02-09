@@ -25,12 +25,14 @@ automatically syncs them to your cluster.
 ```mermaid
 graph TB
     subgraph "External Traffic"
-        LB[Load Balancer]
+        LB[Hetzner Load Balancer<br/>TCP only]
+        FIP[Hetzner Floating IP<br/>78.46.245.217]
         GW[LoRaWAN Gateways]
     end
 
     subgraph "Ingress Layer"
-        TR[Traefik]
+        TR[Traefik<br/>hostPort 1700]
+        FIPC[fip-controller<br/>assigns FIP to Traefik node]
     end
 
     subgraph "Applications"
@@ -52,8 +54,10 @@ graph TB
         RD[(Redis)]
     end
 
-    LB --> TR
-    GW -->|UDP 1700| TR
+    LB -->|HTTP/HTTPS| TR
+    GW -->|UDP 1700| FIP
+    FIP --> TR
+    FIPC -.->|Hetzner API| FIP
     TR --> FE
     TR --> BE
     TR --> CS
@@ -124,13 +128,13 @@ a specific role in the GitOps workflow.
 
 The following ports must be accessible from the internet:
 
-| Port | Protocol | Purpose                       |
-|------|----------|-------------------------------|
-| 80   | TCP      | HTTP (redirects to HTTPS)     |
-| 443  | TCP      | HTTPS                         |
-| 1700 | UDP      | LoRaWAN gateway traffic       |
-| 8884 | TCP      | MQTT with client certificates |
-| 8885 | TCP      | MQTT with username/password   |
+| Port | Protocol | Purpose                                          |
+|------|----------|--------------------------------------------------|
+| 80   | TCP      | HTTP (redirects to HTTPS) via Load Balancer       |
+| 443  | TCP      | HTTPS via Load Balancer                           |
+| 1700 | UDP      | LoRaWAN gateway traffic via Floating IP (see below) |
+| 8884 | TCP      | MQTT with client certificates                    |
+| 8885 | TCP      | MQTT with username/password                      |
 
 ### Configuration Variables
 
@@ -269,13 +273,60 @@ Get the LoadBalancer IP for DNS:
 kubectl get svc traefik -n traefik
 ```
 
+#### Floating IP for LoRaWAN UDP Traffic
+
+Hetzner Cloud Load Balancers **do not support UDP**. Since ChirpStack Gateway Bridge requires UDP port 1700 for LoRaWAN
+gateway packets, a [Hetzner Floating IP](https://docs.hetzner.com/cloud/floating-ips) is used instead.
+
+**How it works:**
+
+1. Traefik binds UDP 1700 directly on the node via `hostPort: 1700` (bypassing the Load Balancer)
+2. A Hetzner Floating IP (`78.46.245.217` / `lora.os2iot.itkdev.dk`) is pointed at the node running Traefik
+3. [`hcloud-fip-controller`](https://github.com/cbeneke/hcloud-fip-controller) automatically reassigns the Floating IP
+   to a node running Traefik whenever pods are rescheduled
+
+**Components** (deployed by `cluster-resources` in `kube-system`):
+
+| Resource | Purpose |
+|----------|---------|
+| `fip-controller` Deployment (2 replicas) | Leader election ensures one active instance assigns the Floating IP to its node via the Hetzner API |
+| `fip-controller-config` ConfigMap | Lists the Floating IPs to manage and how to identify node addresses |
+| `fip-controller` ServiceAccount + RBAC | Permissions to list nodes and manage leader election leases |
+
+The fip-controller pods use `requiredDuringSchedulingIgnoredDuringExecution` pod affinity to Traefik pods, ensuring
+they only schedule on nodes where Traefik is listening on hostPort 1700.
+
+**Configuration** in `applications/cluster-resources/values.yaml`:
+
+```yaml
+fipController:
+  floatingIPs:
+    - "78.46.245.217"    # Hetzner Floating IP for LoRaWAN
+  nodeAddressType: "external"  # Match nodes by external IP
+```
+
+**Verify after deployment:**
+
+```bash
+# Check fip-controller pods are running
+kubectl get pods -n kube-system -l app=fip-controller
+
+# Check logs for successful IP assignment
+kubectl logs -n kube-system -l app=fip-controller --tail=20
+```
+
+> **Note:** The fip-controller assigns the Floating IP via the Hetzner API. The node OS must also accept traffic on the
+> Floating IP address. Cloudfleet may handle this automatically. If not, a privileged DaemonSet running
+> `ip addr add <floating-ip>/32 dev eth0` would be needed.
+
 #### DNS Configuration
 
-Configure DNS A records pointing to the Traefik LB IP:
+Configure DNS A records:
 
 ```text
-your-domain.com        A     <traefik-lb-ip>
-*.your-domain.com      A     <traefik-lb-ip>
+your-domain.com        A     <traefik-lb-ip>   # Cloudfleet LB (HTTP/HTTPS)
+*.your-domain.com      A     <traefik-lb-ip>   # Cloudfleet LB (HTTP/HTTPS)
+lora.your-domain.com   A     78.46.245.217     # Hetzner Floating IP (UDP 1700)
 ```
 
 #### Region Configuration
@@ -1228,6 +1279,7 @@ common issues, but the debug commands that follow are useful for investigating a
 | Sealed Secret not decrypting  | Wrong controller namespace | Verify sealed-secrets in sealed-secrets namespace     |
 | ArgoCD sync failed            | Webhook not ready          | Wait and retry; check operator pods                   |
 | LoadBalancer stuck in Pending | No LB provider             | Install MetalLB (bare metal) or verify cloud provider |
+| LoRaWAN gateways can't connect | Floating IP not assigned  | Check `kubectl logs -n kube-system -l app=fip-controller` and verify Floating IP in Hetzner console |
 | SIGTERM during migrations     | Startup probe timeout      | Increase `failureThreshold` in deployment             |
 
 ### Debug Commands

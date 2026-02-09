@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fip-controller
+  namespace: kube-system
+  labels:
+    app: fip-controller
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fip-controller
+  template:
+    metadata:
+      labels:
+        app: fip-controller
+    spec:
+      serviceAccountName: fip-controller
+      nodeSelector:
+        topology.kubernetes.io/region: fsn1
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - traefik
+              topologyKey: kubernetes.io/hostname
+              namespaces:
+                - traefik
+      containers:
+        - name: fip-controller
+          image: {{ .Values.fipController.image.repository }}:{{ .Values.fipController.image.tag }}
+          env:
+            - name: HCLOUD_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hcloud
+                  key: token
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+      volumes:
+        - name: config
+          configMap:
+            name: fip-controller-config

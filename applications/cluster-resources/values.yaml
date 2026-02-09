@@ -38,3 +38,11 @@ hcloud-csi:
       defaultStorageClass: true
       reclaimPolicy: Retain
       volumeBindingMode: WaitForFirstConsumer
+
+fipController:
+  image:
+    repository: cbeneke/hcloud-fip-controller
+    tag: v0.4.1
+  floatingIPs:
+    - "78.46.245.217"
+  nodeAddressType: "external"

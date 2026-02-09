@@ -966,6 +966,7 @@ traefik:
     # -- LoRaWAN UDP entrypoint for ChirpStack Gateway Bridge
     lorawan:
       port: 1700
+      hostPort: 1700
       expose:
         default: true
       exposedPort: 1700
