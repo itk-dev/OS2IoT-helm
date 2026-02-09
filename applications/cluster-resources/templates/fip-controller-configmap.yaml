@@ -7,5 +7,6 @@ data:
   config.json: |
     {
       "hcloud_floating_ips": {{ .Values.fipController.floatingIPs | toJson }},
-      "node_address_type": {{ .Values.fipController.nodeAddressType | quote }}
+      "node_address_type": {{ .Values.fipController.nodeAddressType | quote }},
+      "namespace": "kube-system"
     }
