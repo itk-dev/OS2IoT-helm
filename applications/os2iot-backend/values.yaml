@@ -47,7 +47,7 @@ os2iotBackend:
   mqtt:
     csHostname: mosquitto-svc.mosquitto
     csPort: "1883"
-    brokerHostname: mosquitto-broker-svc.mosquitto-broker
+    brokerHostname: mqtt.os2iot.itkdev.dk
     superUserPassword: ""
 
   backend:
