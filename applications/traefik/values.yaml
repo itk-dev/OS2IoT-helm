@@ -963,6 +963,13 @@ traefik:
         tracing:  # @schema type:[boolean, null]; default: true
         # -- Defines the tracing verbosity level for this entryPoint.
         traceVerbosity:  # @schema enum:[minimal, detailed, null]; type:[string, null]; default: minimal
+    # -- MQTT TCP entrypoint for mosquitto-broker (cert-based auth)
+    mqtt:
+      port: 8884
+      expose:
+        default: true
+      exposedPort: 8884
+      protocol: TCP
     # -- LoRaWAN UDP entrypoint for ChirpStack Gateway Bridge
     lorawan:
       port: 1700

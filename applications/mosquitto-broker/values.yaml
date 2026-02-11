@@ -19,6 +19,9 @@ mosquittoBroker:
       cpu: 200m
       memory: 256Mi
 
+  ingress:
+    host: "mqtt.os2iot.itkdev.dk"
+
   database:
     host: "postgres-cluster-rw.postgres"
     port: "5432"
