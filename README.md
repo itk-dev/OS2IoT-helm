@@ -1267,29 +1267,42 @@ managed via SealedSecrets.
 | `ca-keys`     | `ca.crt`                   | CA certificate for client verification |
 | `server-keys` | `server.crt`, `server.key` | Server certificate and private key     |
 
-##### Option 1: Generate Self-Signed Certificates (Development)
+##### Shared CA Requirement
+
+**Important:** The broker MUST use the same CA as the OS2IoT backend (`OS2IoT-Device-CA`). This is because:
+
+- The backend CA signs device client certificates (shown in the OS2IoT frontend)
+- The broker uses the CA cert to verify client certificates on port 8884
+- MQTT clients use the same CA cert (`--cafile`) to verify the broker's server certificate
+
+If different CAs are used, TLS verification will fail with "certificate verify failed".
+
+##### Generate Server Certificate
+
+The broker's server certificate must be signed by the backend CA. The CA cert and key are stored in
+`applications/os2iot-backend/local-secrets/ca-keys.yaml` (the key is password-encrypted; password is in the `password` field).
 
 ```bash
-cd applications/mosquitto-broker/local-secrets
+# Extract ca.crt and ca.key from applications/os2iot-backend/local-secrets/ca-keys.yaml
+# Then decrypt the CA key:
+openssl rsa -in ca.key -out ca-decrypted.key -passin pass:<password-from-ca-keys.yaml>
 
-# Generate CA
-openssl genrsa -out ca.key 4096
-openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
-  -subj "/CN=OS2IoT-Mosquitto-CA/O=OS2IoT/C=DK"
-
-# Generate server certificate
+# Generate server key
 openssl genrsa -out server.key 4096
+
+# Create CSR and sign with the backend CA
 openssl req -new -key server.key -out server.csr \
   -subj "/CN=mosquitto-broker/O=OS2IoT/C=DK"
 openssl x509 -req -days 3650 -in server.csr \
-  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+  -CA ca.crt -CAkey ca-decrypted.key \
+  -CAcreateserial -out server.crt
 
-rm server.csr ca.srl
+# Clean up
+rm server.csr ca-decrypted.key ca.srl
 ```
 
-##### Option 2: Use Real Certificates (Production)
-
-Obtain certificates from a trusted CA and place in `applications/mosquitto-broker/local-secrets/`.
+Then copy the **backend CA cert** (from `os2iot-backend/local-secrets/ca-keys.yaml`) into the broker's `ca-keys.yaml`,
+and the new `server.crt` + `server.key` into the broker's `server-keys.yaml`.
 
 ##### Seal the Certificates
 
