@@ -1290,16 +1290,22 @@ openssl rsa -in ca.key -out ca-decrypted.key -passin pass:<password-from-ca-keys
 # Generate server key
 openssl genrsa -out server.key 4096
 
-# Create CSR and sign with the backend CA
+# Create CSR with SAN (CN and SAN must match the external hostname)
 openssl req -new -key server.key -out server.csr \
-  -subj "/CN=mosquitto-broker/O=OS2IoT/C=DK"
+  -subj "/CN=mqtt.os2iot.itkdev.dk/O=OS2IoT/C=DK" \
+  -addext "subjectAltName=DNS:mqtt.os2iot.itkdev.dk,DNS:mosquitto-broker,DNS:mosquitto-broker-svc.mosquitto-broker"
+
+# Sign with the backend CA (copy SAN extensions from CSR)
 openssl x509 -req -days 3650 -in server.csr \
   -CA ca.crt -CAkey ca-decrypted.key \
-  -CAcreateserial -out server.crt
+  -CAcreateserial -out server.crt -copy_extensions copyall
 
 # Clean up
 rm server.csr ca-decrypted.key ca.srl
 ```
+
+**Important:** The server certificate CN and SAN must include the external hostname (`mqtt.os2iot.itkdev.dk`).
+Without this, MQTT clients will fail with "host name verification failed".
 
 Then copy the **backend CA cert** (from `os2iot-backend/local-secrets/ca-keys.yaml`) into the broker's `ca-keys.yaml`,
 and the new `server.crt` + `server.key` into the broker's `server-keys.yaml`.
