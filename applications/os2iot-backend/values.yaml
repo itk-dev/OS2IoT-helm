@@ -74,3 +74,6 @@ os2iotBackend:
 
   bootstrapJob:
     enabled: true  # Set to false to skip automatic bootstrap
+    secretName: os2iot-bootstrap
+    usernameKey: username
+    passwordKey: password

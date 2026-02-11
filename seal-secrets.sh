@@ -154,6 +154,11 @@ seal_secret \
     "templates/chirpstack-api-key-sealed-secret.yaml" \
     "ChirpStack API key"
 
+seal_secret \
+    "local-secrets/bootstrap-secret.yaml" \
+    "templates/bootstrap-sealed-secret.yaml" \
+    "Bootstrap admin credentials"
+
 echo ""
 echo -e "${BLUE}Mosquitto Broker Secrets${NC}"
 echo "========================"

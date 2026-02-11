@@ -1122,6 +1122,34 @@ The backend will automatically use the `chirpstack-api-key` secret for authentic
 
 After the backend is deployed, create a default organization.
 
+#### Bootstrap Credentials
+
+The bootstrap Job uses credentials stored in a SealedSecret (`os2iot-bootstrap`). Create and seal the secret:
+
+```bash
+cd applications/os2iot-backend
+mkdir -p local-secrets
+
+cat > local-secrets/bootstrap-secret.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: os2iot-bootstrap
+  namespace: os2iot-backend
+type: Opaque
+stringData:
+  username: "global-admin@os2iot.dk"
+  password: "hunter2"
+EOF
+
+kubeseal --format yaml \
+  --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets \
+  < local-secrets/bootstrap-secret.yaml > templates/bootstrap-sealed-secret.yaml
+```
+
+Or run `./seal-secrets.sh` which includes this secret.
+
 #### Automatic Organization Creation
 
 A Kubernetes Job automatically creates a default organization. Verify:

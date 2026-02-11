@@ -16,6 +16,17 @@ spec:
       containers:
         - name: bootstrap
           image: curlimages/curl:latest
+          env:
+            - name: BOOTSTRAP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.os2iotBackend.bootstrapJob.secretName }}
+                  key: {{ .Values.os2iotBackend.bootstrapJob.usernameKey }}
+            - name: BOOTSTRAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.os2iotBackend.bootstrapJob.secretName }}
+                  key: {{ .Values.os2iotBackend.bootstrapJob.passwordKey }}
           command:
             - /bin/sh
             - -c
@@ -40,7 +51,7 @@ spec:
               TOKEN_RESPONSE=$(curl -s -X POST \
                 http://os2iot-backend-svc:3000/api/v1/auth/login \
                 -H "Content-Type: application/json" \
-                -d '{"username":"global-admin@os2iot.dk","password":"hunter2"}')
+                -d "{\"username\":\"$BOOTSTRAP_USERNAME\",\"password\":\"$BOOTSTRAP_PASSWORD\"}")
 
               ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
 
@@ -80,10 +91,6 @@ spec:
               echo "================================================"
               echo "Bootstrap complete!"
               echo "================================================"
-              echo ""
-              echo "You can now log in to the frontend with:"
-              echo "  Email: global-admin@os2iot.dk"
-              echo "  Password: hunter2"
               echo ""
               echo "IMPORTANT: Change the default password after first login!"
               echo "================================================"
